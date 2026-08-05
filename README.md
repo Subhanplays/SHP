@@ -1,297 +1,501 @@
-# SHP (SubhanHostPanel)
+# 🚀 SHP (SubhanHostPanel)
 
-A complete professional hosting management and billing platform - a WHMCS-style alternative designed for hosting companies.
+![SHP Banner](https://via.placeholder.com/1200x500/0f0f1a/6366f1?text=SHP+SubhanHostPanel)
 
-![SHP Dashboard](https://via.placeholder.com/800x400/0f0f1a/6366f1?text=SHP+Dashboard)
+**SHP (SubhanHostPanel)** is a complete professional hosting management and billing platform.
 
-## Features
-
-### User Features
-- **Authentication**: Login with Email, Google, or Discord
-- **Dashboard**: Overview of servers, orders, and SHP Coins
-- **Server Management**: Start, stop, restart servers via Pterodactyl
-- **Products**: Browse and purchase Minecraft, VPS, Game, and Bot hosting
-- **Billing**: View invoices, orders, and payment history
-- **SHP Coins**: Virtual currency system for purchases and renewals
-- **Profile**: Manage account settings and connected accounts
-
-### Admin Features
-- **Dashboard**: Platform overview with statistics
-- **User Management**: View, edit, and manage users
-- **Coin Management**: Give/remove SHP Coins from users
-- **Product Management**: Create, edit, delete hosting products
-- **Order Management**: View and manage all orders
-- **Server Management**: Suspend, unsuspend, delete servers
-- **Pterodactyl Integration**: Connect multiple Pterodactyl panels
-- **Settings**: Customize branding, theme, and coin settings
-
-### White-Label Customization
-- Change panel name, logo, and branding
-- Customize colors, fonts, and theme
-- Custom CSS editor
-- Background builder (color, gradient, image, GIF, video)
-
-## Tech Stack
-
-### Frontend
-- **React.js** with Vite
-- **React Router** for navigation
-- **Zustand** for state management
-- **React Bootstrap** & **Bootstrap 5** for UI components
-- **Framer Motion** for animations
-- **React Icons** for icons
-
-### Backend
-- **Node.js** with Express.js
-- **Prisma ORM** for database
-- **MySQL/MariaDB** database
-- **Firebase Authentication**
-- **Socket.IO** for real-time updates
-- **Nodemailer** for emails
-
-## Installation
-
-### Prerequisites
-- Node.js 18+
-- MySQL 8+ or MariaDB 10.6+
-- Firebase project
-
-### 1. Clone the Repository
-```bash
-git clone https://github.com/yourusername/shp.git
-cd shp
-```
-
-### 2. Backend Setup
-```bash
-cd backend
-npm install
-
-# Copy environment file
-cp .env.example .env
-
-# Edit .env with your settings
-# - DATABASE_URL
-# - Firebase credentials
-# - JWT_SECRET
-# - Email settings
-
-# Run Prisma migrations
-npx prisma generate
-npx prisma migrate dev
-
-# Start the server
-npm run dev
-```
-
-### 3. Frontend Setup
-```bash
-cd frontend
-npm install
-
-# Copy environment file
-cp .env.example .env
-
-# Edit .env with your Firebase config
-# VITE_FIREBASE_API_KEY
-# VITE_FIREBASE_AUTH_DOMAIN
-# etc.
-
-# Start development server
-npm run dev
-```
-
-### 4. Firebase Setup
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable Authentication (Email/Password, Google)
-3. Copy the Firebase config to your frontend `.env`
-4. Generate a service account key for the backend
-5. Add the service account credentials to backend `.env`
-
-## Environment Variables
-
-### Backend (.env)
-```env
-# Database
-DATABASE_URL="mysql://user:password@localhost:3306/shp_db"
-
-# Firebase Admin SDK
-FIREBASE_PROJECT_ID="your-project-id"
-FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com"
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-# JWT
-JWT_SECRET="your-super-secret-jwt-key"
-
-# Server
-PORT=5000
-NODE_ENV=development
-FRONTEND_URL="http://localhost:5173"
-
-# Email (Optional)
-SMTP_HOST="smtp.gmail.com"
-SMTP_PORT=587
-SMTP_USER="your-email@gmail.com"
-SMTP_PASS="your-app-password"
-EMAIL_FROM="noreply@yourpanel.com"
-
-# Payment Gateways (Optional)
-STRIPE_SECRET_KEY="sk_test_..."
-PAYPAL_CLIENT_ID="..."
-PAYPAL_CLIENT_SECRET="..."
-
-# Discord Webhook (Optional)
-DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
-```
-
-### Frontend (.env)
-```env
-VITE_API_URL="/api"
-VITE_FIREBASE_API_KEY="your-api-key"
-VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="your-project"
-VITE_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
-VITE_FIREBASE_MESSAGING_SENDER_ID="123456789"
-VITE_FIREBASE_APP_ID="1:123456789:web:abc123"
-```
-
-## Project Structure
-
-```
-SHP/
-├── backend/
-│   ├── prisma/
-│   │   └── schema.prisma      # Database schema
-│   ├── src/
-│   │   ├── config/            # Configuration files
-│   │   ├── middleware/        # Express middleware
-│   │   ├── routes/            # API routes
-│   │   ├── services/          # Business logic
-│   │   ├── utils/             # Utility functions
-│   │   └── server.js          # Entry point
-│   ├── uploads/               # Uploaded files
-│   └── package.json
-│
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── api/               # API client
-│   │   ├── components/        # Reusable components
-│   │   ├── config/            # Configuration
-│   │   ├── layouts/           # Page layouts
-│   │   ├── pages/             # Page components
-│   │   ├── store/             # Zustand stores
-│   │   ├── App.jsx            # Main app
-│   │   └── main.jsx           # Entry point
-│   └── package.json
-│
-└── README.md
-```
-
-## API Endpoints
-
-### Authentication
-- `POST /api/auth/register` - Register new user
-- `POST /api/auth/login` - Login
-- `GET /api/auth/me` - Get current user
-- `PUT /api/auth/me` - Update profile
-
-### Products
-- `GET /api/products` - List products
-- `GET /api/products/:id` - Get product details
-- `GET /api/products/categories/list` - List categories
-
-### Orders
-- `POST /api/orders/create` - Create order
-- `GET /api/orders` - List user orders
-- `GET /api/orders/:id` - Get order details
-
-### Servers
-- `GET /api/servers` - List user servers
-- `GET /api/servers/:id` - Get server details
-- `POST /api/servers/:id/start` - Start server
-- `POST /api/servers/:id/stop` - Stop server
-- `POST /api/servers/:id/restart` - Restart server
-- `POST /api/servers/:id/renew` - Renew server
-
-### Coins
-- `GET /api/coins/balance` - Get coin balance
-- `GET /api/coins/transactions` - Get transaction history
-
-### Admin
-- `GET /api/admin/dashboard` - Admin dashboard stats
-- `GET /api/admin/users` - List all users
-- `POST /api/admin/users/:id/coins` - Give/remove coins
-- `GET /api/admin/products` - List all products
-- `POST /api/admin/products` - Create product
-- `PUT /api/admin/products/:id` - Update product
-- `GET /api/admin/servers` - List all servers
-- `POST /api/admin/servers/:id/suspend` - Suspend server
-- `GET /api/admin/pterodactyl` - List Pterodactyl panels
-- `POST /api/admin/pterodactyl` - Add Pterodactyl panel
-
-## SHP Coins System
-
-SHP Coins is a virtual currency that users can use to purchase hosting services.
-
-### Earning Coins
-- **Signup Bonus**: New users receive coins on registration
-- **Daily Login**: Users can claim daily rewards
-- **Referral**: Earn coins when referred users make purchases
-- **Admin Grant**: Admins can manually add coins
-
-### Spending Coins
-- Purchase hosting products
-- Renew existing servers
-- Buy addons
-
-### Configuring Coins
-Admins can configure coin settings in the admin panel:
-- Enable/disable coins
-- Signup reward amount
-- Daily reward amount
-- Referral reward amount
-
-## Pterodactyl Integration
-
-SHP integrates with Pterodactyl Panel for server management.
-
-### Setting Up Pterodactyl
-1. Go to Admin → Pterodactyl
-2. Click "Add Panel"
-3. Enter panel details:
-   - Name
-   - Panel URL
-   - Application API Key
-   - (Optional) Client API Key
-4. Click "Test Connection" to verify
-5. Save
-
-### Automatic Server Creation
-When a user purchases a product:
-1. SHP creates a Pterodactyl user (if needed)
-2. Creates a server with the product's specifications
-3. Assigns resources (RAM, CPU, Disk)
-4. Sends connection details to the user
-
-## Security
-
-- Firebase Authentication for secure login
-- JWT tokens for API authentication
-- Role-based access control (user, admin, superadmin)
-- Rate limiting on API endpoints
-- Input validation and sanitization
-- CORS protection
-- Helmet.js for security headers
-
-## License
-
-MIT License - See LICENSE file for details.
-
-## Support
-
-For support, please open an issue on GitHub or contact support@subhanhostpanel.com.
+It is a WHMCS-style alternative designed for hosting companies, allowing you to sell Minecraft hosting, VPS, game servers, bot hosting, and other digital services with automatic provisioning through Pterodactyl.
 
 ---
 
-Built with ❤️ by Subhanplays 
+## ✨ Features
+
+# 👤 User Features
+
+### Authentication
+- Login/Register with Email & Password
+- Google Authentication
+- Discord Authentication
+- Firebase-powered secure authentication
+
+### User Dashboard
+- View active servers
+- View orders
+- View invoices
+- Manage SHP Coins
+- Account statistics
+
+### Server Management
+- Start servers
+- Stop servers
+- Restart servers
+- View server information
+- Automatic Pterodactyl synchronization
+
+### Hosting Store
+Users can purchase:
+
+- Minecraft Hosting
+- VPS Hosting
+- Game Servers
+- Bot Hosting
+- Custom Products
+
+### Billing System
+- Order management
+- Invoice system
+- Payment history
+- Server renewals
+
+### SHP Coins System
+Virtual currency system:
+
+- Buy hosting using coins
+- Receive signup rewards
+- Daily rewards
+- Referral rewards
+- Admin coin management
+
+
+---
+
+# 🛠 Admin Features
+
+## Admin Dashboard
+
+- Total users statistics
+- Total servers
+- Revenue overview
+- Order analytics
+
+## User Management
+
+- View users
+- Edit users
+- Ban users
+- Manage roles
+
+## Coin Management
+
+Admins can:
+
+- Add coins
+- Remove coins
+- Configure rewards
+- Manage coin economy
+
+## Product Management
+
+Create and manage:
+
+- Minecraft plans
+- VPS plans
+- Game server plans
+- Bot hosting plans
+
+Features:
+
+- RAM
+- CPU
+- Storage
+- Database limits
+- Pricing
+- Coin pricing
+
+
+## Pterodactyl Management
+
+- Connect multiple Pterodactyl panels
+- Manage API keys
+- Test panel connection
+- Automatic server creation
+
+
+---
+
+# 🎨 White Label Customization
+
+Fully customize your hosting panel:
+
+- Change panel name
+- Change logo
+- Change favicon
+- Change colors
+- Custom themes
+- Custom CSS
+- Background customization
+
+Supported backgrounds:
+
+- Solid colors
+- Gradients
+- Images
+- GIFs
+- Videos
+
+
+---
+
+# ⚙️ Tech Stack
+
+## Frontend
+
+- React.js
+- Vite
+- React Router
+- Zustand
+- Bootstrap 5
+- React Bootstrap
+- Framer Motion
+- React Icons
+
+
+## Backend
+
+- Node.js
+- Express.js
+- Prisma ORM
+- MySQL / MariaDB
+- Firebase Authentication
+- Socket.IO
+- Nodemailer
+
+
+---
+
+# 📦 Installation
+
+
+## Requirements
+
+- Node.js 18+
+- MySQL 8+ / MariaDB 10.6+
+- Firebase Project
+- Pterodactyl Panel
+
+
+---
+
+## Clone Repository
+
+```bash
+git clone https://github.com/Subhanplays/SHP.git
+
+cd SHP
+````
+
+---
+
+# Backend Setup
+
+```bash
+cd backend
+
+npm install
+```
+
+Create environment file:
+
+```bash
+cp .env.example .env
+```
+
+Configure:
+
+```
+DATABASE_URL
+
+FIREBASE SETTINGS
+
+JWT SECRET
+
+SMTP SETTINGS
+```
+
+Run database:
+
+```bash
+npx prisma generate
+
+npx prisma migrate dev
+```
+
+Start backend:
+
+```bash
+npm run dev
+```
+
+---
+
+# Frontend Setup
+
+```bash
+cd frontend
+
+npm install
+```
+
+Create environment:
+
+```bash
+cp .env.example .env
+```
+
+Start frontend:
+
+```bash
+npm run dev
+```
+
+---
+
+# 🔥 Firebase Setup
+
+1. Create a Firebase project
+
+[https://console.firebase.google.com](https://console.firebase.google.com)
+
+2. Enable:
+
+* Email Authentication
+* Google Authentication
+* Discord Authentication
+
+3. Add Firebase configuration to frontend `.env`
+
+4. Add Firebase Admin credentials to backend `.env`
+
+---
+
+# 🔐 Environment Variables
+
+## Backend `.env`
+
+```env
+DATABASE_URL="mysql://user:password@localhost:3306/shp"
+
+PORT=5000
+
+NODE_ENV=development
+
+JWT_SECRET="your-secret"
+
+
+FIREBASE_PROJECT_ID=""
+FIREBASE_CLIENT_EMAIL=""
+FIREBASE_PRIVATE_KEY=""
+
+
+SMTP_HOST=""
+SMTP_PORT=""
+SMTP_USER=""
+SMTP_PASS=""
+
+
+DISCORD_WEBHOOK_URL=""
+```
+
+## Frontend `.env`
+
+```env
+VITE_API_URL="/api"
+
+VITE_FIREBASE_API_KEY=""
+VITE_FIREBASE_AUTH_DOMAIN=""
+VITE_FIREBASE_PROJECT_ID=""
+VITE_FIREBASE_STORAGE_BUCKET=""
+VITE_FIREBASE_APP_ID=""
+```
+
+---
+
+# 📁 Project Structure
+
+```
+SHP/
+
+├── backend/
+
+│   ├── prisma/
+
+│   ├── src/
+
+│   │   ├── routes/
+
+│   │   ├── services/
+
+│   │   ├── middleware/
+
+│   │   └── server.js
+
+│   └── package.json
+
+
+├── frontend/
+
+│   ├── public/
+
+│   ├── src/
+
+│   │   ├── components/
+
+│   │   ├── pages/
+
+│   │   ├── store/
+
+│   │   └── App.jsx
+
+│   └── package.json
+
+
+└── README.md
+```
+
+---
+
+# 🔌 API Features
+
+## Authentication
+
+```
+POST /api/auth/register
+
+POST /api/auth/login
+
+GET /api/auth/me
+```
+
+## Products
+
+```
+GET /api/products
+
+GET /api/products/:id
+```
+
+## Orders
+
+```
+POST /api/orders/create
+
+GET /api/orders
+```
+
+## Servers
+
+```
+GET /api/servers
+
+POST /api/servers/:id/start
+
+POST /api/servers/:id/stop
+
+POST /api/servers/:id/restart
+```
+
+## Coins
+
+```
+GET /api/coins/balance
+
+GET /api/coins/history
+```
+
+## Admin
+
+```
+GET /api/admin/dashboard
+
+GET /api/admin/users
+
+POST /api/admin/products
+
+POST /api/admin/pterodactyl
+```
+
+---
+
+# 🪙 SHP Coins System
+
+SHP Coins are a virtual currency used inside the platform.
+
+## Users Can Earn Coins
+
+* Signup rewards
+* Daily rewards
+* Referral rewards
+* Admin giveaways
+
+## Users Can Spend Coins
+
+* Purchase servers
+* Renew servers
+* Buy addons
+
+Admins can control:
+
+* Coin value
+* Rewards
+* User balances
+
+---
+
+# 🐳 Pterodactyl Integration
+
+SHP automatically creates servers after purchase.
+
+Process:
+
+1. User buys hosting plan
+
+2. SHP creates Pterodactyl user
+
+3. SHP creates server
+
+4. Resources are assigned:
+
+* RAM
+* CPU
+* Disk
+* Database
+
+5. User receives server details
+
+---
+
+# 🔒 Security
+
+Implemented security:
+
+* Firebase Authentication
+* JWT Authentication
+* Role-based permissions
+* Input validation
+* Rate limiting
+* Helmet.js
+* CORS protection
+
+---
+
+# 📜 License
+
+MIT License
+
+---
+
+# 💬 Support
+
+For support:
+
+Create a GitHub issue or contact:
+
+[subhan@subhanplays.qzz.io](mailto:subhan@subhanplays.qzz.io)
+
+---
+
+<div align="center">
+
+## Built with ❤️ by Subhan
+
+### SHP - SubhanHostPanel
