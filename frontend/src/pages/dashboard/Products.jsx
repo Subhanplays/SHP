@@ -1,0 +1,2 @@
+const Products = () => <div className="glass-card"><h2>Products</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Browse Minecraft, VPS, Game Servers, Bot Hosting and more.</p></div>;
+export default Products;

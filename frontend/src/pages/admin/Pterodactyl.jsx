@@ -1,0 +1,2 @@
+const AdminPterodactyl = () => <div className="glass-card"><h2>Pterodactyl Panels</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Manage Pterodactyl panel connections.</p></div>;
+export default AdminPterodactyl;

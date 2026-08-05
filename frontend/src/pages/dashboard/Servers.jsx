@@ -1,0 +1,2 @@
+const Servers = () => <div className="glass-card"><h2>My Servers</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Manage your game servers, VPS, and bot hosting instances.</p></div>;
+export default Servers;

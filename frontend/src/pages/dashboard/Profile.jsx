@@ -1,0 +1,2 @@
+const Profile = () => <div className="glass-card"><h2>My Profile</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Manage your account settings, security, and connected accounts.</p></div>;
+export default Profile;

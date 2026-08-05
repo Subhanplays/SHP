@@ -1,0 +1,2 @@
+const AdminDashboard = () => <div className="glass-card"><h2>Admin Dashboard</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Overview of your hosting platform.</p></div>;
+export default AdminDashboard;

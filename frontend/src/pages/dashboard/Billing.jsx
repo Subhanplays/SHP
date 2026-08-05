@@ -1,0 +1,2 @@
+const Billing = () => <div className="glass-card"><h2>Billing</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Invoices, transactions and payment methods.</p></div>;
+export default Billing;

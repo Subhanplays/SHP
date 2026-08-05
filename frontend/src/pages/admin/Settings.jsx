@@ -1,0 +1,2 @@
+const AdminSettings = () => <div className="glass-card"><h2>Settings</h2><p style={{color:'var(--text-secondary)',marginTop:'1rem'}}>Customize branding, theme, coins, and more.</p></div>;
+export default AdminSettings;
