@@ -1,4 +1,4 @@
-# SHP (SubhanHostPanel)
+﻿# SHP (SubhanHostPanel)
 
 A complete professional hosting management and billing platform - a WHMCS-style alternative designed for hosting companies.
 
@@ -7,7 +7,7 @@ A complete professional hosting management and billing platform - a WHMCS-style 
 ## Features
 
 ### User Features
-- **Authentication**: Login with Email, Google, or Discord
+- **Authentication**: Register and login with email + password
 - **Dashboard**: Overview of servers, orders, and SHP Coins
 - **Server Management**: Start, stop, restart servers via Pterodactyl
 - **Products**: Browse and purchase Minecraft, VPS, Game, and Bot hosting
@@ -43,18 +43,15 @@ A complete professional hosting management and billing platform - a WHMCS-style 
 
 ### Backend
 - **Node.js** with Express.js
-- **Prisma ORM** for database
-- **MySQL/MariaDB** database
-- **Firebase Authentication**
+- **SQLite** (via Node's built-in `node:sqlite` - no external database needed)
+- **JWT** + **bcrypt** authentication (email/password)
 - **Socket.IO** for real-time updates
 - **Nodemailer** for emails
 
 ## Installation
 
 ### Prerequisites
-- Node.js 18+
-- MySQL 8+ or MariaDB 10.6+
-- Firebase project
+- Node.js 22.5+ (SQLite support built in; tested on Node 24)
 
 ### 1. Clone the Repository
 ```bash
@@ -71,14 +68,12 @@ npm install
 cp .env.example .env
 
 # Edit .env with your settings
-# - DATABASE_URL
-# - Firebase credentials
-# - JWT_SECRET
-# - Email settings
+# - JWT_SECRET (change this!)
+# - ADMIN_EMAIL / ADMIN_PASSWORD (initial admin account)
+# - Email settings (optional)
 
-# Run Prisma migrations
-npx prisma generate
-npx prisma migrate dev
+# Create the admin user and default settings
+npm run seed
 
 # Start the server
 npm run dev
@@ -92,41 +87,33 @@ npm install
 # Copy environment file
 cp .env.example .env
 
-# Edit .env with your Firebase config
-# VITE_FIREBASE_API_KEY
-# VITE_FIREBASE_AUTH_DOMAIN
-# etc.
-
 # Start development server
 npm run dev
 ```
 
-### 4. Firebase Setup
-1. Create a Firebase project at [console.firebase.google.com](https://console.firebase.google.com)
-2. Enable Authentication (Email/Password, Google)
-3. Copy the Firebase config to your frontend `.env`
-4. Generate a service account key for the backend
-5. Add the service account credentials to backend `.env`
+### 4. Log In
+Open http://localhost:5173 and sign in with the admin account created by
+`npm run seed` (defaults: `admin@shp.com` / `admin123`).
 
 ## Environment Variables
 
 ### Backend (.env)
 ```env
-# Database
-DATABASE_URL="mysql://user:password@localhost:3306/shp_db"
-
-# Firebase Admin SDK
-FIREBASE_PROJECT_ID="your-project-id"
-FIREBASE_CLIENT_EMAIL="firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com"
-FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\n...\n-----END PRIVATE KEY-----\n"
-
-# JWT
+# JWT Secret (change this!)
 JWT_SECRET="your-super-secret-jwt-key"
 
 # Server
 PORT=5000
 NODE_ENV=development
 FRONTEND_URL="http://localhost:5173"
+
+# Initial admin account (used by `npm run seed`)
+ADMIN_USERNAME="admin"
+ADMIN_EMAIL="admin@shp.com"
+ADMIN_PASSWORD="admin123"
+
+# SQLite database file (optional - defaults to ./data/shp.db)
+DATABASE_PATH="./data/shp.db"
 
 # Email (Optional)
 SMTP_HOST="smtp.gmail.com"
@@ -142,50 +129,50 @@ PAYPAL_CLIENT_SECRET="..."
 
 # Discord Webhook (Optional)
 DISCORD_WEBHOOK_URL="https://discord.com/api/webhooks/..."
+
+# OAuth (Optional - Google & Discord social login)
+BACKEND_URL="http://localhost:5000"
+GOOGLE_CLIENT_ID="xxxx.apps.googleusercontent.com"
+GOOGLE_CLIENT_SECRET="GOCSPX-..."
+DISCORD_CLIENT_ID="..."
+DISCORD_CLIENT_SECRET="..."
 ```
 
 ### Frontend (.env)
 ```env
-VITE_API_URL="/api"
-VITE_FIREBASE_API_KEY="your-api-key"
-VITE_FIREBASE_AUTH_DOMAIN="your-project.firebaseapp.com"
-VITE_FIREBASE_PROJECT_ID="your-project"
-VITE_FIREBASE_STORAGE_BUCKET="your-project.appspot.com"
-VITE_FIREBASE_MESSAGING_SENDER_ID="123456789"
-VITE_FIREBASE_APP_ID="1:123456789:web:abc123"
+VITE_API_URL="http://localhost:5000/api"
 ```
 
 ## Project Structure
 
 ```
 SHP/
-├── backend/
-│   ├── prisma/
-│   │   └── schema.prisma      # Database schema
-│   ├── src/
-│   │   ├── config/            # Configuration files
-│   │   ├── middleware/        # Express middleware
-│   │   ├── routes/            # API routes
-│   │   ├── services/          # Business logic
-│   │   ├── utils/             # Utility functions
-│   │   └── server.js          # Entry point
-│   ├── uploads/               # Uploaded files
-│   └── package.json
-│
-├── frontend/
-│   ├── public/
-│   ├── src/
-│   │   ├── api/               # API client
-│   │   ├── components/        # Reusable components
-│   │   ├── config/            # Configuration
-│   │   ├── layouts/           # Page layouts
-│   │   ├── pages/             # Page components
-│   │   ├── store/             # Zustand stores
-│   │   ├── App.jsx            # Main app
-│   │   └── main.jsx           # Entry point
-│   └── package.json
-│
-└── README.md
+â”œâ”€â”€ backend/
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ config/            # Configuration files (SQLite database layer)
+â”‚   â”‚   â”œâ”€â”€ middleware/        # Express middleware
+â”‚   â”‚   â”œâ”€â”€ routes/            # API routes
+â”‚   â”‚   â”œâ”€â”€ services/          # Business logic
+â”‚   â”‚   â”œâ”€â”€ utils/             # Utility functions
+â”‚   â”‚   â””â”€â”€ server.js          # Entry point
+â”‚   â”œâ”€â”€ scripts/               # Setup scripts (seed.js)
+â”‚   â”œâ”€â”€ data/                  # SQLite database file
+â”‚   â”œâ”€â”€ uploads/               # Uploaded files
+â”‚   â””â”€â”€ package.json
+â”‚
+â”œâ”€â”€ frontend/
+â”‚   â”œâ”€â”€ public/
+â”‚   â”œâ”€â”€ src/
+â”‚   â”‚   â”œâ”€â”€ api/               # API client
+â”‚   â”‚   â”œâ”€â”€ components/        # Reusable components
+â”‚   â”‚   â”œâ”€â”€ layouts/           # Page layouts
+â”‚   â”‚   â”œâ”€â”€ pages/             # Page components
+â”‚   â”‚   â”œâ”€â”€ store/             # Zustand stores
+â”‚   â”‚   â”œâ”€â”€ App.jsx            # Main app
+â”‚   â”‚   â””â”€â”€ main.jsx           # Entry point
+â”‚   â””â”€â”€ package.json
+â”‚
+â””â”€â”€ README.md
 ```
 
 ## API Endpoints
@@ -217,18 +204,55 @@ SHP/
 ### Coins
 - `GET /api/coins/balance` - Get coin balance
 - `GET /api/coins/transactions` - Get transaction history
+- `POST /api/coins/daily-reward` - Claim daily reward
+- `GET /api/coins/referral` - Get referral code and referrals
+
+### Coupons
+- `GET /api/coupons/validate` - Validate a coupon code
+- `GET /api/coupons` - List active public coupons
+- `POST /api/coupons/admin` - Create coupon (admin)
+- `PUT /api/coupons/admin/:id` - Update coupon (admin)
+- `DELETE /api/coupons/admin/:id` - Delete coupon (admin)
+
+### Payments
+- `POST /api/payments/checkout` - Create a checkout session
+- `POST /api/payments/complete` - Confirm a payment
+- `POST /api/payments/buy-coins` - Purchase SHP Coins
+- `POST /api/payments/webhook` - Payment provider webhook
+
+### Media
+- `GET /api/media` - List uploaded files
+- `POST /api/media/upload` - Upload a file (admin)
+- `DELETE /api/media/:id` - Delete a file (admin)
+
+### Settings
+- `GET /api/settings` - Get all settings
+- `PUT /api/settings/:key` - Update a setting (admin)
+- `PATCH /api/settings/bulk` - Update multiple settings (admin)
 
 ### Admin
 - `GET /api/admin/dashboard` - Admin dashboard stats
 - `GET /api/admin/users` - List all users
+- `GET /api/admin/users/:id` - Get user details
+- `PUT /api/admin/users/:id` - Update user
 - `POST /api/admin/users/:id/coins` - Give/remove coins
 - `GET /api/admin/products` - List all products
 - `POST /api/admin/products` - Create product
 - `PUT /api/admin/products/:id` - Update product
+- `DELETE /api/admin/products/:id` - Delete product
+- `GET /api/admin/orders` - List all orders
 - `GET /api/admin/servers` - List all servers
 - `POST /api/admin/servers/:id/suspend` - Suspend server
+- `POST /api/admin/servers/:id/unsuspend` - Unsuspend server
+- `DELETE /api/admin/servers/:id` - Delete server
+- `POST /api/admin/servers/:id/provision` - Retry provisioning
+- `GET /api/admin/coins/transactions` - List coin transactions
+- `GET /api/admin/logs` - View activity logs
 - `GET /api/admin/pterodactyl` - List Pterodactyl panels
 - `POST /api/admin/pterodactyl` - Add Pterodactyl panel
+- `PUT /api/admin/pterodactyl/:id` - Update panel
+- `DELETE /api/admin/pterodactyl/:id` - Delete panel
+- `POST /api/admin/pterodactyl/test` - Test panel connection
 
 ## SHP Coins System
 
@@ -257,7 +281,7 @@ Admins can configure coin settings in the admin panel:
 SHP integrates with Pterodactyl Panel for server management.
 
 ### Setting Up Pterodactyl
-1. Go to Admin → Pterodactyl
+1. Go to Admin â†’ Pterodactyl
 2. Click "Add Panel"
 3. Enter panel details:
    - Name
@@ -268,21 +292,57 @@ SHP integrates with Pterodactyl Panel for server management.
 5. Save
 
 ### Automatic Server Creation
-When a user purchases a product:
-1. SHP creates a Pterodactyl user (if needed)
+When a user purchases a product:1. SHP creates a Pterodactyl user (if needed)
 2. Creates a server with the product's specifications
 3. Assigns resources (RAM, CPU, Disk)
 4. Sends connection details to the user
 
+## Social Login (Google & Discord)
+
+Optional OAuth sign-in is supported. After the OAuth flow, the backend redirects
+to `${FRONTEND_URL}/auth/social` with a signed-in session.
+
+### Google
+1. Create a project at https://console.cloud.google.com -> APIs & Services -> Credentials
+2. Create an **OAuth 2.0 Client ID** (Web application)
+3. Set authorized redirect URI: `http://localhost:5000/api/auth/google/callback`
+4. Copy the client ID/secret into `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET`
+
+### Discord
+1. Create an app at https://discord.com/developers/applications -> OAuth2
+2. Add redirect: `http://localhost:5000/api/auth/discord/callback`
+3. Copy the client ID/secret into `DISCORD_CLIENT_ID` / `DISCORD_CLIENT_SECRET`
+
+Then restart the backend. The Google/Discord buttons appear on the login and
+register pages.
+
 ## Security
 
-- Firebase Authentication for secure login
 - JWT tokens for API authentication
+- bcrypt password hashing
 - Role-based access control (user, admin, superadmin)
 - Rate limiting on API endpoints
 - Input validation and sanitization
 - CORS protection
 - Helmet.js for security headers
+
+## SQLite Data Model
+
+The app uses a single-file SQLite database (default `backend/data/shp.db`),
+created automatically on first start. Tables are created automatically - no
+database setup is required.
+
+The data layer in `backend/src/config/database.js` exposes a Prisma-style API
+(`db.user.findMany({ where, include, orderBy, ... })`) built on Node's built-in
+`node:sqlite` module, so no ORM or external database server is needed.
+
+Tables: `users`, `products`, `orders`, `order_items`, `servers`, `invoices`,
+`payments`, `coin_transactions`, `media`, `settings`, `pterodactyl_panels`,
+`coupons`, `referrals`, `logs`, `notifications`.
+
+Relations are stored as foreign-key columns (e.g. `order.userId`,
+`server.orderId`) and resolved at query time. Settings use the setting `key` as
+the primary key.
 
 ## License
 
@@ -294,8 +354,4 @@ For support, please open an issue on GitHub or contact support@subhanhostpanel.c
 
 ---
 
-Built with ❤️ by Subhan#   S H P  
- #   S H P  
- #   S H P  
- #   S H P  
- 
+Built with love by Subhan

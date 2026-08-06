@@ -1,10 +1,9 @@
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
-import { sendPasswordResetEmail } from 'firebase/auth';
-import { auth } from '../../config/firebase';
 import { motion } from 'framer-motion';
 import { FaEnvelope, FaArrowLeft } from 'react-icons/fa';
 import toast from 'react-hot-toast';
+import { authAPI } from '../../api/axios';
 
 const ForgotPassword = () => {
   const [email, setEmail] = useState('');
@@ -15,11 +14,11 @@ const ForgotPassword = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await sendPasswordResetEmail(auth, email);
+      const response = await authAPI.forgotPassword({ email });
       setSent(true);
-      toast.success('Password reset email sent!');
+      toast.success(response.data.message || 'Password reset email sent!');
     } catch (error) {
-      toast.error(error.message);
+      toast.error(error.response?.data?.message || 'Something went wrong. Please try again.');
     } finally {
       setLoading(false);
     }

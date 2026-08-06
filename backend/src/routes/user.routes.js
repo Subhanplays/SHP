@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware.js';
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { ApiError } from '../middleware/error.middleware.js';
 
 const router = Router();
@@ -10,7 +10,7 @@ router.get('/servers', authenticate, async (req, res, next) => {
   try {
     const { status, limit = 20, page = 1 } = req.query;
 
-    const servers = await prisma.server.findMany({
+    const servers = await db.server.findMany({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -29,7 +29,7 @@ router.get('/servers', authenticate, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.server.count({
+    const total = await db.server.count({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -59,7 +59,7 @@ router.get('/servers/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findFirst({
+    const server = await db.server.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -96,7 +96,7 @@ router.get('/orders', authenticate, async (req, res, next) => {
   try {
     const { status, limit = 20, page = 1 } = req.query;
 
-    const orders = await prisma.order.findMany({
+    const orders = await db.order.findMany({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -120,7 +120,7 @@ router.get('/orders', authenticate, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.order.count({
+    const total = await db.order.count({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -149,7 +149,7 @@ router.get('/orders/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const order = await prisma.order.findFirst({
+    const order = await db.order.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -183,7 +183,7 @@ router.get('/invoices', authenticate, async (req, res, next) => {
   try {
     const { status, limit = 20, page = 1 } = req.query;
 
-    const invoices = await prisma.invoice.findMany({
+    const invoices = await db.invoice.findMany({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -202,7 +202,7 @@ router.get('/invoices', authenticate, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.invoice.count({
+    const total = await db.invoice.count({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -231,7 +231,7 @@ router.get('/coins/transactions', authenticate, async (req, res, next) => {
   try {
     const { type, limit = 20, page = 1 } = req.query;
 
-    const transactions = await prisma.coinTransaction.findMany({
+    const transactions = await db.coinTransaction.findMany({
       where: {
         userId: req.userId,
         ...(type && { type }),
@@ -241,7 +241,7 @@ router.get('/coins/transactions', authenticate, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.coinTransaction.count({
+    const total = await db.coinTransaction.count({
       where: {
         userId: req.userId,
         ...(type && { type }),
@@ -270,7 +270,7 @@ router.get('/payments', authenticate, async (req, res, next) => {
   try {
     const { status, limit = 20, page = 1 } = req.query;
 
-    const payments = await prisma.payment.findMany({
+    const payments = await db.payment.findMany({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -280,7 +280,7 @@ router.get('/payments', authenticate, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.payment.count({
+    const total = await db.payment.count({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -314,14 +314,14 @@ router.get('/dashboard', authenticate, async (req, res, next) => {
       recentOrders,
       totalSpent
     ] = await Promise.all([
-      prisma.server.count({
+      db.server.count({
         where: {
           userId: req.userId,
           status: 'running',
           deletedAt: null,
         },
       }),
-      prisma.server.count({
+      db.server.count({
         where: {
           userId: req.userId,
           expiresAt: {
@@ -331,13 +331,13 @@ router.get('/dashboard', authenticate, async (req, res, next) => {
           deletedAt: null,
         },
       }),
-      prisma.order.count({
+      db.order.count({
         where: {
           userId: req.userId,
           status: 'pending',
         },
       }),
-      prisma.order.findMany({
+      db.order.findMany({
         where: {
           userId: req.userId,
         },
@@ -357,7 +357,7 @@ router.get('/dashboard', authenticate, async (req, res, next) => {
           },
         },
       }),
-      prisma.payment.aggregate({
+      db.payment.aggregate({
         where: {
           userId: req.userId,
           status: 'completed',
@@ -368,7 +368,7 @@ router.get('/dashboard', authenticate, async (req, res, next) => {
       }),
     ]);
 
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id: req.userId },
       select: { coins: true },
     });

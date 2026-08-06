@@ -64,3 +64,32 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
     text: `You requested a password reset.\n\nClick the link to reset your password:\n${process.env.FRONTEND_URL}/reset-password?token=${resetToken}\n\nIf you didn't request this, please ignore this email.`,
   });
 };
+
+export const sendServerDetailsEmail = async (user, server, panel = null) => {
+  const panelUrl = panel?.url || '';
+  await sendEmail({
+    to: user.email,
+    subject: `Your server "${server.name}" is ready`,
+    html: `
+      <h2>Your server is ready!</h2>
+      <p>Hi <strong>${user.username}</strong>,</p>
+      <p>Your server <strong>${server.name}</strong> has been provisioned successfully.</p>
+      <ul>
+        <li>RAM: ${server.ram}MB</li>
+        <li>CPU: ${server.cpu}%</li>
+        <li>Disk: ${server.disk}MB</li>
+        <li>Expires: ${new Date(server.expiresAt).toLocaleDateString()}</li>
+      </ul>
+      ${panelUrl ? `<p>Manage it at: <a href="${panelUrl}">${panelUrl}</a></p>` : ''}
+      <p>Thanks,<br/>The Team</p>
+    `,
+  });
+};
+
+export const sendCoinsCreditedEmail = async (user, amount, reason) => {
+  await sendEmail({
+    to: user.email,
+    subject: `${amount} Coins added to your account`,
+    text: `Hi ${user.username},\n\n${amount} SHP Coins have been added to your balance${reason ? ` (${reason})` : ''}.\n\nCurrent balance: ${user.coins} SHP Coins.`,
+  });
+};

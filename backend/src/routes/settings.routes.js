@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware.js';
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { ApiError } from '../middleware/error.middleware.js';
 
 const router = Router();
@@ -10,7 +10,7 @@ router.get('/', async (req, res, next) => {
   try {
     const { category } = req.query;
 
-    const settings = await prisma.settings.findMany({
+    const settings = await db.settings.findMany({
       where: {
         ...(category && { category }),
       },
@@ -36,7 +36,7 @@ router.get('/:key', async (req, res, next) => {
   try {
     const { key } = req.params;
 
-    const setting = await prisma.settings.findUnique({
+    const setting = await db.settings.findUnique({
       where: { key },
     });
 
@@ -62,7 +62,7 @@ router.put('/:key', authenticate, requireAdmin, async (req, res, next) => {
     const { key } = req.params;
     const { value, category } = req.body;
 
-    const setting = await prisma.settings.upsert({
+    const setting = await db.settings.upsert({
       where: { key },
       update: {
         value,
@@ -92,7 +92,7 @@ router.patch('/bulk', authenticate, requireAdmin, async (req, res, next) => {
 
     const results = await Promise.all(
       updates.map(async (update) => {
-        return prisma.settings.upsert({
+        return db.settings.upsert({
           where: { key: update.key },
           update: {
             value: update.value,

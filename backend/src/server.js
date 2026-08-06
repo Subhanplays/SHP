@@ -22,16 +22,14 @@ import paymentRoutes from './routes/payment.routes.js';
 import settingsRoutes from './routes/settings.routes.js';
 import mediaRoutes from './routes/media.routes.js';
 import pterodactylRoutes from './routes/pterodactyl.routes.js';
+import couponRoutes from './routes/coupon.routes.js';
 
 // Import middleware
 import { errorHandler } from './middleware/error.middleware.js';
 import { logger } from './middleware/logger.middleware.js';
 
-// Import Firebase Admin
-import { initializeFirebase } from './config/firebase.js';
-
 // Import database
-import { prisma } from './config/database.js';
+import { db } from './config/database.js';
 
 // Import scheduled tasks
 import { startScheduledTasks } from './services/scheduledTasks.js';
@@ -41,9 +39,6 @@ dotenv.config();
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
-
-// Initialize Firebase Admin
-initializeFirebase();
 
 const app = express();
 const httpServer = createServer(app);
@@ -62,7 +57,17 @@ app.set('io', io);
 // Rate limiting
 const limiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100 // limit each IP to 100 requests per windowMs
+  max: 1000, // limit each IP to 1000 requests per windowMs (generous for shared IPs)
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Stricter limiter for authentication endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30, // 30 auth attempts per 15 minutes per IP
+  standardHeaders: true,
+  legacyHeaders: false,
 });
 
 // Middleware
@@ -90,7 +95,7 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use(logger);
 
 // API Routes
-app.use('/api/auth', authRoutes);
+app.use('/api/auth', authLimiter, authRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/products', productRoutes);
 app.use('/api/orders', orderRoutes);
@@ -101,6 +106,7 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/settings', settingsRoutes);
 app.use('/api/media', mediaRoutes);
 app.use('/api/pterodactyl', pterodactylRoutes);
+app.use('/api/coupons', couponRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -131,10 +137,12 @@ io.on('connection', (socket) => {
 startScheduledTasks();
 
 // Database connection test
-prisma.$connect()
-  .then(() => {
-    console.log('✅ Connected to database');
-    
+db.$connect()
+  .then((connected) => {
+    if (connected) {
+      console.log('✅ Connected to database');
+    }
+
     const PORT = process.env.PORT || 5000;
     httpServer.listen(PORT, () => {
       console.log(`🚀 Server running on port ${PORT}`);
@@ -143,14 +151,20 @@ prisma.$connect()
     });
   })
   .catch((err) => {
-    console.error('❌ Database connection failed:', err);
-    process.exit(1);
+    console.warn('⚠️ Database unavailable, starting server anyway:', err.message);
+
+    const PORT = process.env.PORT || 5000;
+    httpServer.listen(PORT, () => {
+      console.log(`🚀 Server running on port ${PORT}`);
+      console.log(`📡 Environment: ${process.env.NODE_ENV}`);
+      console.log(`🌐 API: http://localhost:${PORT}/api`);
+    });
   });
 
 // Graceful shutdown
 process.on('SIGTERM', async () => {
   console.log('SIGTERM received, shutting down gracefully...');
-  await prisma.$disconnect();
+  await db.$disconnect();
   process.exit(0);
 });
 

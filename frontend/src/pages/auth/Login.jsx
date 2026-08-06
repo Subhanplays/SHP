@@ -1,16 +1,54 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { signInWithEmailAndPassword } from 'firebase/auth';
-import { auth, googleProvider } from '../../config/firebase';
-import { signInWithPopup } from 'firebase/auth';
 import { motion } from 'framer-motion';
-import { FaGoogle, FaEnvelope, FaLock } from 'react-icons/fa';
+import { FaEnvelope, FaLock, FaGoogle, FaDiscord } from 'react-icons/fa';
 import toast from 'react-hot-toast';
 import useAuthStore from '../../store/authStore';
+import { authAPI } from '../../api/axios';
+
+const SocialButton = ({ provider }) => {
+  const [loading, setLoading] = useState(false);
+  const handleClick = async () => {
+    setLoading(true);
+    try {
+      const res = provider === 'google' ? await authAPI.getGoogleUrl() : await authAPI.getDiscordUrl();
+      window.location.href = res.url;
+    } catch (error) {
+      toast.error(error.response?.data?.message || `${provider} login not configured`);
+      setLoading(false);
+    }
+  };
+  const Icon = provider === 'google' ? FaGoogle : FaDiscord;
+  return (
+    <button
+      type="button"
+      onClick={handleClick}
+      disabled={loading}
+      style={{
+        flex: 1,
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        gap: '0.6rem',
+        padding: '0.75rem',
+        borderRadius: 'var(--radius-sm)',
+        border: '1px solid var(--glass-border)',
+        background: 'var(--glass-bg)',
+        color: 'var(--text-primary)',
+        cursor: 'pointer',
+        fontWeight: 600,
+        fontSize: '0.875rem',
+        transition: 'all var(--transition-fast)',
+      }}
+    >
+      <Icon /> {loading ? 'Redirecting...' : provider === 'google' ? 'Google' : 'Discord'}
+    </button>
+  );
+};
 
 const Login = () => {
   const navigate = useNavigate();
-  const { signInWithGoogle } = useAuthStore();
+  const login = useAuthStore((state) => state.login);
   const [formData, setFormData] = useState({ email: '', password: '' });
   const [loading, setLoading] = useState(false);
 
@@ -22,23 +60,15 @@ const Login = () => {
     e.preventDefault();
     setLoading(true);
     try {
-      await signInWithEmailAndPassword(auth, formData.email, formData.password);
-      toast.success('Welcome back!');
-      navigate('/dashboard');
-    } catch (error) {
-      toast.error(error.message);
+      const result = await login(formData.email, formData.password);
+      if (result.success) {
+        toast.success('Welcome back!');
+        navigate('/dashboard');
+      } else {
+        toast.error(result.error);
+      }
     } finally {
       setLoading(false);
-    }
-  };
-
-  const handleGoogleLogin = async () => {
-    const result = await signInWithGoogle();
-    if (result.success) {
-      toast.success('Welcome back!');
-      navigate('/dashboard');
-    } else {
-      toast.error(result.error);
     }
   };
 
@@ -105,36 +135,16 @@ const Login = () => {
         </motion.button>
       </form>
 
-      <div style={{ margin: '1.5rem 0', display: 'flex', alignItems: 'center', gap: '1rem' }}>
-        <div style={{ flex: 1, height: '1px', background: 'var(--glass-border)' }} />
-        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>OR CONTINUE WITH</span>
-        <div style={{ flex: 1, height: '1px', background: 'var(--glass-border)' }} />
+      <div style={{ display: 'flex', alignItems: 'center', gap: '1rem', margin: '1.5rem 0' }}>
+        <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
+        <span style={{ color: 'var(--text-muted)', fontSize: '0.75rem' }}>or continue with</span>
+        <div style={{ flex: 1, height: 1, background: 'var(--glass-border)' }} />
       </div>
 
-      <motion.button
-        type="button"
-        onClick={handleGoogleLogin}
-        style={{
-          width: '100%',
-          padding: '0.875rem',
-          background: 'var(--glass-bg)',
-          border: '1px solid var(--glass-border)',
-          borderRadius: 'var(--radius-sm)',
-          color: 'var(--text-primary)',
-          fontWeight: 600,
-          cursor: 'pointer',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          gap: '0.75rem',
-          transition: 'all var(--transition-fast)',
-        }}
-        whileHover={{ scale: 1.02, background: 'rgba(255,255,255,0.08)' }}
-        whileTap={{ scale: 0.98 }}
-      >
-        <FaGoogle style={{ color: '#ea4335' }} />
-        Sign in with Google
-      </motion.button>
+      <div style={{ display: 'flex', gap: '0.75rem' }}>
+        <SocialButton provider="google" />
+        <SocialButton provider="discord" />
+      </div>
 
       <p style={{ textAlign: 'center', marginTop: '1.5rem', fontSize: '0.875rem', color: 'var(--text-secondary)' }}>
         Don't have an account?{' '}

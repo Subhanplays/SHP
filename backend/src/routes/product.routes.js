@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, optionalAuth } from '../middleware/auth.middleware.js';
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { ApiError } from '../middleware/error.middleware.js';
 
 const router = Router();
@@ -10,7 +10,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
   try {
     const { category, enabled, limit = 20, page = 1 } = req.query;
 
-    const products = await prisma.product.findMany({
+    const products = await db.product.findMany({
       where: {
         ...(category && { category }),
         ...(enabled && { enabled: enabled === 'true' }),
@@ -20,7 +20,7 @@ router.get('/', optionalAuth, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.product.count({
+    const total = await db.product.count({
       where: {
         ...(category && { category }),
         ...(enabled && { enabled: enabled === 'true' }),
@@ -49,7 +49,7 @@ router.get('/:id', optionalAuth, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const product = await prisma.product.findUnique({
+    const product = await db.product.findUnique({
       where: { id },
       include: {
         _count: {

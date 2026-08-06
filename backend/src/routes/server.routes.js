@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate } from '../middleware/auth.middleware.js';
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { pterodactylService } from '../services/pterodactyl.js';
 import { ApiError } from '../middleware/error.middleware.js';
 
@@ -11,7 +11,7 @@ router.get('/', authenticate, async (req, res, next) => {
   try {
     const { status, limit = 20, page = 1 } = req.query;
 
-    const servers = await prisma.server.findMany({
+    const servers = await db.server.findMany({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -22,7 +22,7 @@ router.get('/', authenticate, async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.server.count({
+    const total = await db.server.count({
       where: {
         userId: req.userId,
         ...(status && { status }),
@@ -52,7 +52,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findFirst({
+    const server = await db.server.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -68,7 +68,7 @@ router.get('/:id', authenticate, async (req, res, next) => {
     let pteroInfo = null;
     if (server.pteroId && server.pteroPanelId) {
       try {
-        const panel = await prisma.pterodactylPanel.findUnique({
+        const panel = await db.pterodactylPanel.findUnique({
           where: { id: server.pteroPanelId },
         });
         
@@ -97,7 +97,7 @@ router.post('/:id/start', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findFirst({
+    const server = await db.server.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -117,7 +117,7 @@ router.post('/:id/start', authenticate, async (req, res, next) => {
       throw new ApiError(400, 'Server not connected to Pterodactyl', 'PTERO_NOT_CONFIGURED');
     }
 
-    const panel = await prisma.pterodactylPanel.findUnique({
+    const panel = await db.pterodactylPanel.findUnique({
       where: { id: server.pteroPanelId },
     });
 
@@ -132,7 +132,7 @@ router.post('/:id/start', authenticate, async (req, res, next) => {
       'start'
     );
 
-    await prisma.server.update({
+    await db.server.update({
       where: { id },
       data: { status: 'running' },
     });
@@ -151,7 +151,7 @@ router.post('/:id/stop', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findFirst({
+    const server = await db.server.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -167,7 +167,7 @@ router.post('/:id/stop', authenticate, async (req, res, next) => {
       throw new ApiError(400, 'Server not connected to Pterodactyl', 'PTERO_NOT_CONFIGURED');
     }
 
-    const panel = await prisma.pterodactylPanel.findUnique({
+    const panel = await db.pterodactylPanel.findUnique({
       where: { id: server.pteroPanelId },
     });
 
@@ -196,7 +196,7 @@ router.post('/:id/restart', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findFirst({
+    const server = await db.server.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -212,7 +212,7 @@ router.post('/:id/restart', authenticate, async (req, res, next) => {
       throw new ApiError(400, 'Server not connected to Pterodactyl', 'PTERO_NOT_CONFIGURED');
     }
 
-    const panel = await prisma.pterodactylPanel.findUnique({
+    const panel = await db.pterodactylPanel.findUnique({
       where: { id: server.pteroPanelId },
     });
 
@@ -242,7 +242,7 @@ router.post('/:id/renew', authenticate, async (req, res, next) => {
     const { id } = req.params;
     const { paymentMethod } = req.body;
 
-    const server = await prisma.server.findFirst({
+    const server = await db.server.findFirst({
       where: {
         id,
         userId: req.userId,
@@ -259,7 +259,7 @@ router.post('/:id/renew', authenticate, async (req, res, next) => {
       throw new ApiError(400, 'No order associated with this server', 'NO_ORDER');
     }
 
-    const order = await prisma.order.findUnique({
+    const order = await db.order.findUnique({
       where: { id: server.orderId },
       include: {
         items: {
@@ -280,7 +280,7 @@ router.post('/:id/renew', authenticate, async (req, res, next) => {
 
     // Check if user has enough coins (if paying with coins)
     if (paymentMethod === 'coins') {
-      const currentUser = await prisma.user.findUnique({
+      const currentUser = await db.user.findUnique({
         where: { id: req.userId },
       });
 
@@ -289,12 +289,12 @@ router.post('/:id/renew', authenticate, async (req, res, next) => {
       }
 
       // Deduct coins
-      const updatedUser = await prisma.user.update({
+      const updatedUser = await db.user.update({
         where: { id: req.userId },
         data: { coins: { decrement: coinPrice } },
       });
 
-      await prisma.coinTransaction.create({
+      await db.coinTransaction.create({
         data: {
           userId: req.userId,
           amount: -coinPrice,
@@ -329,7 +329,7 @@ router.post('/:id/renew', authenticate, async (req, res, next) => {
         break;
     }
 
-    await prisma.server.update({
+    await db.server.update({
       where: { id },
       data: {
         expiresAt: expiryDate,

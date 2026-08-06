@@ -1,66 +1,39 @@
-import { verifyFirebaseToken } from '../config/firebase.js';
-import { prisma } from '../config/database.js';
+import { verifyToken } from '../utils/jwt.js';
+import { db } from '../config/database.js';
 import { ApiError } from './error.middleware.js';
 
-// Verify Firebase token and attach user to request
+// Verify JWT and attach user to request
 export const authenticate = async (req, res, next) => {
   try {
     // Get token from Authorization header
     const authHeader = req.headers.authorization;
-    
+
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
       throw new ApiError(401, 'Access denied. No token provided.', 'NO_TOKEN');
     }
 
     const token = authHeader.split('Bearer ')[1];
-    
-    // Verify Firebase token
-    const decodedToken = await verifyFirebaseToken(token);
-    
-    // Find or create user in database
-    let user = await prisma.user.findUnique({
-      where: { firebaseUid: decodedToken.uid },
+
+    // Verify JWT
+    let decoded;
+    try {
+      decoded = verifyToken(token);
+    } catch (error) {
+      throw new ApiError(401, 'Invalid or expired token', 'INVALID_TOKEN');
+    }
+
+    // Load user from database
+    const user = await db.user.findUnique({
+      where: { id: decoded.id },
     });
 
     if (!user) {
-      // Auto-create user on first login
-      user = await prisma.user.create({
-        data: {
-          firebaseUid: decodedToken.uid,
-          email: decodedToken.email,
-          username: decodedToken.email.split('@')[0],
-          avatar: decodedToken.picture || null,
-        },
-      });
-
-      // Give signup bonus if enabled
-      const settings = await prisma.settings.findUnique({
-        where: { key: 'coins_signup_reward' },
-      });
-      
-      if (settings && settings.value.enabled) {
-        const rewardAmount = parseInt(settings.value.amount) || 1000;
-        await prisma.user.update({
-          where: { id: user.id },
-          data: { coins: rewardAmount },
-        });
-        
-        await prisma.coinTransaction.create({
-          data: {
-            userId: user.id,
-            amount: rewardAmount,
-            balance: rewardAmount,
-            type: 'signup',
-            description: 'Signup reward',
-          },
-        });
-      }
+      throw new ApiError(401, 'User not found', 'USER_NOT_FOUND');
     }
 
     req.user = user;
     req.userId = user.id;
-    req.firebaseUid = decodedToken.uid;
-    
+
     next();
   } catch (error) {
     if (error instanceof ApiError) {
@@ -109,21 +82,21 @@ export const requireSuperAdmin = async (req, res, next) => {
 export const optionalAuth = async (req, res, next) => {
   try {
     const authHeader = req.headers.authorization;
-    
+
     if (authHeader && authHeader.startsWith('Bearer ')) {
       const token = authHeader.split('Bearer ')[1];
-      const decodedToken = await verifyFirebaseToken(token);
-      
-      const user = await prisma.user.findUnique({
-        where: { firebaseUid: decodedToken.uid },
+      const decoded = verifyToken(token);
+
+      const user = await db.user.findUnique({
+        where: { id: decoded.id },
       });
-      
+
       if (user) {
         req.user = user;
         req.userId = user.id;
       }
     }
-    
+
     next();
   } catch (error) {
     // Continue without authentication

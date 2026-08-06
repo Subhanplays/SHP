@@ -1,21 +1,10 @@
 import { useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
-import { motion, AnimatePresence } from 'framer-motion';
-import {
-  FaHome,
-  FaServer,
-  FaShoppingCart,
-  FaBox,
-  FaCreditCard,
-  FaUser,
-  FaBars,
-  FaTimes,
-  FaCoins,
-  FaSignOutAlt,
-  FaBell,
-  FaCog,
-} from 'react-icons/fa';
+import { FaHome, FaServer, FaShoppingCart, FaBox, FaCreditCard, FaUser, FaBars, FaTimes, FaCoins, FaSignOutAlt, FaMoon, FaSun } from 'react-icons/fa';
 import useAuthStore from '../store/authStore';
+import useSettingsStore from '../store/settingsStore';
+import BackgroundLayer from '../components/BackgroundLayer';
+import Notifications from '../components/Notifications';
 
 const navItems = [
   { path: '/dashboard', icon: FaHome, label: 'Dashboard' },
@@ -31,40 +20,36 @@ const DashboardLayout = ({ children }) => {
   const location = useLocation();
   const navigate = useNavigate();
   const { user, signOut, getCoins } = useAuthStore();
+  const branding = useSettingsStore((s) => s.branding);
+  const darkMode = useSettingsStore((s) => s.darkMode);
+  const toggleDarkMode = useSettingsStore((s) => s.toggleDarkMode);
+  const isAdmin = user?.role === 'admin' || user?.role === 'superadmin';
 
   const handleSignOut = async () => {
     await signOut();
     navigate('/login');
   };
 
+  const pageTitle = navItems.find((i) => location.pathname.startsWith(i.path))?.label || 'Dashboard';
+  const logo = branding?.logo;
+
   return (
-    <div className="dashboard-layout" style={{ minHeight: '100vh', display: 'flex' }}>
-      {/* Mobile Sidebar Overlay */}
+    <div style={{ minHeight: '100vh', display: 'flex', fontFamily: 'var(--font-family)' }}>
+      <BackgroundLayer />
+
       {sidebarOpen && (
         <div
-          className="sidebar-overlay"
-          style={{
-            position: 'fixed',
-            top: 0,
-            left: 0,
-            right: 0,
-            bottom: 0,
-            background: 'rgba(0,0,0,0.5)',
-            zIndex: 999,
-          }}
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0,0,0,0.5)', zIndex: 998 }}
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Sidebar */}
-      <motion.aside
-        className="sidebar"
-        initial={false}
-        animate={{ x: sidebarOpen ? 0 : 0 }}
+      <aside
+        className={sidebarOpen ? 'app-sidebar open' : 'app-sidebar'}
         style={{
-          width: '260px',
+          width: 'var(--sidebar-width, 260px)',
           minHeight: '100vh',
-          background: 'var(--bg-secondary)',
+          background: 'var(--bg-sidebar, var(--bg-secondary))',
           borderRight: '1px solid var(--glass-border)',
           padding: '1.5rem',
           display: 'flex',
@@ -73,84 +58,74 @@ const DashboardLayout = ({ children }) => {
           left: 0,
           top: 0,
           zIndex: 1000,
-          transform: sidebarOpen ? 'translateX(0)' : 'translateX(0)',
-          '@media (max-width: 768px)': {
-            transform: sidebarOpen ? 'translateX(0)' : 'translateX(-100%)',
-          },
+          transition: 'transform var(--transition-normal)',
         }}
       >
-        {/* Logo */}
-        <div style={{ marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-          <div
-            style={{
-              width: '40px',
-              height: '40px',
-              borderRadius: '12px',
-              background: 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontWeight: 'bold',
-              fontSize: '1.25rem',
-            }}
-          >
-            S
-          </div>
-          <div>
-            <h4 style={{ margin: 0, fontSize: '1.1rem' }}>SHP</h4>
-            <p style={{ margin: 0, fontSize: '0.75rem', color: 'var(--text-muted)' }}>
-              SubhanHostPanel
-            </p>
-          </div>
-        </div>
-
-        {/* Navigation */}
-        <nav style={{ flex: 1 }}>
-          {navItems.map((item) => (
-            <Link
-              key={item.path}
-              to={item.path}
+        <Link to="/dashboard" style={{ textDecoration: 'none', color: 'inherit', marginBottom: '2rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+          {logo ? (
+            <img src={logo} alt={branding?.panelName} style={{ width: '42px', height: '42px', borderRadius: '12px', objectFit: 'contain' }} />
+          ) : (
+            <div
               style={{
+                width: '42px',
+                height: '42px',
+                borderRadius: '12px',
+                background: 'linear-gradient(135deg, var(--primary-color), var(--secondary-color))',
                 display: 'flex',
                 alignItems: 'center',
-                gap: '0.75rem',
-                padding: '0.875rem 1rem',
-                marginBottom: '0.5rem',
-                borderRadius: 'var(--radius-sm)',
-                color: location.pathname === item.path ? 'var(--text-primary)' : 'var(--text-secondary)',
-                background: location.pathname === item.path ? 'var(--glass-bg)' : 'transparent',
-                border: location.pathname === item.path ? '1px solid var(--glass-border)' : 'none',
-                textDecoration: 'none',
-                transition: 'all var(--transition-fast)',
+                justifyContent: 'center',
+                fontWeight: 'bold',
+                fontSize: '1.25rem',
+                color: '#fff',
+                flexShrink: 0,
               }}
-              onClick={() => setSidebarOpen(false)}
             >
-              <item.icon
+              {(branding?.panelName || 'S').charAt(0).toUpperCase()}
+            </div>
+          )}
+          <div>
+            <h4 style={{ margin: 0, fontSize: '1.05rem' }}>{branding?.panelName || 'SHP'}</h4>
+            <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)' }}>{branding?.fullName || 'SubhanHostPanel'}</p>
+          </div>
+        </Link>
+
+        <nav style={{ flex: 1 }}>
+          {navItems.map((item) => {
+            const active = location.pathname === item.path || location.pathname.startsWith(item.path + '/');
+            return (
+              <Link
+                key={item.path}
+                to={item.path}
+                onClick={() => setSidebarOpen(false)}
                 style={{
-                  color: location.pathname === item.path ? 'var(--primary-color)' : 'var(--text-muted)',
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.75rem',
+                  padding: '0.8rem 1rem',
+                  marginBottom: '0.4rem',
+                  borderRadius: 'var(--radius-sm)',
+                  color: active ? 'var(--text-primary)' : 'var(--text-secondary)',
+                  background: active ? 'var(--glass-bg)' : 'transparent',
+                  border: active ? '1px solid var(--glass-border)' : '1px solid transparent',
+                  textDecoration: 'none',
+                  transition: 'all var(--transition-fast)',
+                  fontSize: '0.9rem',
                 }}
-              />
-              <span style={{ fontWeight: location.pathname === item.path ? 600 : 400 }}>
-                {item.label}
-              </span>
-            </Link>
-          ))}
+              >
+                <item.icon style={{ color: active ? 'var(--primary-color)' : 'var(--text-muted)' }} />
+                <span style={{ fontWeight: active ? 600 : 400 }}>{item.label}</span>
+              </Link>
+            );
+          })}
         </nav>
 
-        {/* User Section */}
-        <div
-          style={{
-            paddingTop: '1rem',
-            borderTop: '1px solid var(--glass-border)',
-          }}
-        >
-          {/* Coin Balance */}
+        <div style={{ paddingTop: '1rem', borderTop: '1px solid var(--glass-border)' }}>
           <div
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: '0.5rem',
-              padding: '0.75rem 1rem',
+              padding: '0.7rem 1rem',
               marginBottom: '0.5rem',
               background: 'linear-gradient(135deg, rgba(251, 191, 36, 0.1), rgba(245, 158, 11, 0.1))',
               borderRadius: 'var(--radius-sm)',
@@ -158,79 +133,57 @@ const DashboardLayout = ({ children }) => {
             }}
           >
             <FaCoins style={{ color: '#fbbf24' }} />
-            <span style={{ color: '#fbbf24', fontWeight: 600 }}>
-              {getCoins().toLocaleString()} SHP Coins
-            </span>
+            <span style={{ color: '#fbbf24', fontWeight: 600, fontSize: '0.85rem' }}>{getCoins().toLocaleString()} SHP Coins</span>
           </div>
 
-          {/* User Info */}
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: '0.75rem',
-              padding: '0.75rem',
-              borderRadius: 'var(--radius-sm)',
-              background: 'var(--glass-bg)',
-            }}
-          >
-            <img
-              src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=6366f1&color=fff`}
-              alt={user?.username}
+          {isAdmin && (
+            <Link
+              to="/admin"
               style={{
-                width: '36px',
-                height: '36px',
-                borderRadius: '50%',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: '0.7rem',
+                marginBottom: '0.5rem',
+                borderRadius: 'var(--radius-sm)',
+                background: 'rgba(239,68,68,0.1)',
+                border: '1px solid rgba(239,68,68,0.25)',
+                color: '#ef4444',
+                textDecoration: 'none',
+                fontWeight: 600,
+                fontSize: '0.85rem',
               }}
+            >
+              Admin Panel
+            </Link>
+          )}
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem', padding: '0.7rem', borderRadius: 'var(--radius-sm)', background: 'var(--glass-bg)' }}>
+            <img
+              src={user?.avatar || `https://ui-avatars.com/api/?name=${user?.username || 'User'}&background=${(branding?.panelName || 'S').charAt(0) === 'S' ? '6366f1' : '6366f1'}&color=fff`}
+              alt={user?.username}
+              style={{ width: '36px', height: '36px', borderRadius: '50%' }}
             />
             <div style={{ flex: 1, overflow: 'hidden' }}>
-              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.875rem', whiteSpace: 'nowrap' }}>
-                {user?.username}
-              </p>
-              <p
-                style={{
-                  margin: 0,
-                  fontSize: '0.75rem',
-                  color: 'var(--text-muted)',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                {user?.email}
-              </p>
+              <p style={{ margin: 0, fontWeight: 600, fontSize: '0.85rem', whiteSpace: 'nowrap' }}>{user?.username}</p>
+              <p style={{ margin: 0, fontSize: '0.72rem', color: 'var(--text-muted)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{user?.email}</p>
             </div>
             <button
               onClick={handleSignOut}
-              style={{
-                background: 'none',
-                border: 'none',
-                color: 'var(--text-muted)',
-                cursor: 'pointer',
-                padding: '0.5rem',
-                borderRadius: 'var(--radius-sm)',
-                transition: 'all var(--transition-fast)',
-              }}
-              onMouseEnter={(e) => (e.target.style.color = '#ef4444')}
-              onMouseLeave={(e) => (e.target.style.color = 'var(--text-muted)')}
+              style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', padding: '0.5rem', borderRadius: 'var(--radius-sm)' }}
+              title="Sign out"
             >
               <FaSignOutAlt />
             </button>
           </div>
         </div>
-      </motion.aside>
+      </aside>
 
-      {/* Main Content */}
-      <div
-        style={{
-          flex: 1,
-          marginLeft: '260px',
-          minHeight: '100vh',
-        }}
-      >
-        {/* Top Navbar */}
+      <div style={{ flex: 1, marginLeft: 'var(--sidebar-width, 260px)', minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
         <header
           style={{
             height: '64px',
-            padding: '0 2rem',
+            padding: '0 1.5rem',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -241,84 +194,38 @@ const DashboardLayout = ({ children }) => {
             zIndex: 100,
           }}
         >
-          {/* Mobile Menu Toggle */}
-          <button
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            style={{
-              display: 'none',
-              background: 'none',
-              border: 'none',
-              color: 'var(--text-primary)',
-              fontSize: '1.25rem',
-              cursor: 'pointer',
-              padding: '0.5rem',
-            }}
-            className="mobile-menu-toggle"
-          >
-            {sidebarOpen ? <FaTimes /> : <FaBars />}
-          </button>
-
-          {/* Page Title */}
-          <h2 style={{ margin: 0, fontSize: '1.25rem', fontWeight: 600 }}>
-            {navItems.find((item) => item.path === location.pathname)?.label || 'Dashboard'}
-          </h2>
-
-          {/* Right Side */}
           <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-            {/* Notifications */}
             <button
-              style={{
-                background: 'var(--glass-bg)',
-                border: '1px solid var(--glass-border)',
-                color: 'var(--text-secondary)',
-                padding: '0.625rem',
-                borderRadius: 'var(--radius-sm)',
-                cursor: 'pointer',
-                position: 'relative',
-              }}
+              className="mobile-menu-toggle"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              style={{ display: 'none', background: 'none', border: 'none', color: 'var(--text-primary)', fontSize: '1.25rem', cursor: 'pointer' }}
             >
-              <FaBell />
-              <span
-                style={{
-                  position: 'absolute',
-                  top: '-4px',
-                  right: '-4px',
-                  width: '8px',
-                  height: '8px',
-                  borderRadius: '50%',
-                  background: '#ef4444',
-                }}
-              />
+              {sidebarOpen ? <FaTimes /> : <FaBars />}
             </button>
+            <h2 style={{ margin: 0, fontSize: '1.15rem', fontWeight: 600 }}>{pageTitle}</h2>
+          </div>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+            <button
+              onClick={toggleDarkMode}
+              style={{ background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', color: 'var(--text-secondary)', padding: '0.625rem', borderRadius: 'var(--radius-sm)', cursor: 'pointer' }}
+              title={darkMode ? 'Switch to light mode' : 'Switch to dark mode'}
+            >
+              {darkMode ? <FaSun /> : <FaMoon />}
+            </button>
+            <Notifications />
           </div>
         </header>
 
-        {/* Page Content */}
-        <main
-          style={{
-            padding: '2rem',
-            minHeight: 'calc(100vh - 64px)',
-          }}
-        >
-          {children}
-        </main>
+        <main style={{ padding: '2rem', flex: 1 }}>{children}</main>
       </div>
 
-      {/* Responsive Styles */}
       <style>{`
         @media (max-width: 768px) {
-          .sidebar {
-            transform: translateX(-100%) !important;
-          }
-          .sidebar.open {
-            transform: translateX(0) !important;
-          }
-          .mobile-menu-toggle {
-            display: block !important;
-          }
-          main {
-            margin-left: 0 !important;
-          }
+          .app-sidebar { transform: translateX(-100%); width: 260px !important; }
+          .app-sidebar.open { transform: translateX(0); }
+          .mobile-menu-toggle { display: block !important; }
+          main { margin-left: 0 !important; padding: 1.25rem !important; }
         }
       `}</style>
     </div>
