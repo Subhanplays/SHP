@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware.js';
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { ApiError } from '../middleware/error.middleware.js';
 import path from 'path';
 import { v4 as uuidv4 } from 'uuid';
@@ -13,7 +13,7 @@ router.get('/', async (req, res, next) => {
   try {
     const { type, limit = 50, page = 1 } = req.query;
 
-    const media = await prisma.media.findMany({
+    const media = await db.media.findMany({
       where: {
         ...(type && { type }),
       },
@@ -22,7 +22,7 @@ router.get('/', async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.media.count({
+    const total = await db.media.count({
       where: {
         ...(type && { type }),
       },
@@ -82,7 +82,7 @@ router.post('/upload', authenticate, requireAdmin, async (req, res, next) => {
     }
 
     // Save to database
-    const media = await prisma.media.create({
+    const media = await db.media.create({
       data: {
         filename,
         originalName: file.name,
@@ -109,7 +109,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const media = await prisma.media.findUnique({
+    const media = await db.media.findUnique({
       where: { id },
     });
 
@@ -124,7 +124,7 @@ router.delete('/:id', authenticate, requireAdmin, async (req, res, next) => {
     }
 
     // Delete from database
-    await prisma.media.delete({
+    await db.media.delete({
       where: { id },
     });
 

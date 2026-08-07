@@ -1,4 +1,4 @@
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { pterodactylService } from './pterodactyl.js';
 import { sendEmail } from '../utils/email.js';
 import { sendDiscordWebhook } from '../utils/discord.js';
@@ -13,9 +13,6 @@ export const startScheduledTasks = () => {
   // Send expiry reminders every 6 hours
   setInterval(sendExpiryReminders, 6 * 60 * 60 * 1000);
 
-  // Process daily rewards every day at midnight
-  setInterval(processDailyRewards, 24 * 60 * 60 * 1000);
-
   // Initial run
   setTimeout(checkExpiredServers, 5000);
   setTimeout(sendExpiryReminders, 10000);
@@ -29,7 +26,7 @@ async function checkExpiredServers() {
     const now = new Date();
 
     // Get settings for grace period
-    const gracePeriodSetting = await prisma.settings.findUnique({
+    const gracePeriodSetting = await db.settings.findUnique({
       where: { key: 'grace_period_days' },
     });
     const gracePeriodDays = gracePeriodSetting?.value?.days || 7;
@@ -37,7 +34,7 @@ async function checkExpiredServers() {
     // Find servers that expired more than grace period ago
     const gracePeriodAgo = new Date(now.getTime() - gracePeriodDays * 24 * 60 * 60 * 1000);
 
-    const serversToDelete = await prisma.server.findMany({
+    const serversToDelete = await db.server.findMany({
       where: {
         expiresAt: {
           lt: gracePeriodAgo,
@@ -56,7 +53,7 @@ async function checkExpiredServers() {
       try {
         // Delete from Pterodactyl
         if (server.pteroId && server.pteroPanelId) {
-          const panel = await prisma.pterodactylPanel.findUnique({
+          const panel = await db.pterodactylPanel.findUnique({
             where: { id: server.pteroPanelId },
           });
 
@@ -66,7 +63,7 @@ async function checkExpiredServers() {
         }
 
         // Mark as deleted
-        await prisma.server.update({
+        await db.server.update({
           where: { id: server.id },
           data: {
             status: 'deleted',
@@ -89,7 +86,7 @@ async function checkExpiredServers() {
 
     // Find servers that just expired (within the last hour)
     const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000);
-    const serversToSuspend = await prisma.server.findMany({
+    const serversToSuspend = await db.server.findMany({
       where: {
         expiresAt: {
           lt: now,
@@ -107,7 +104,7 @@ async function checkExpiredServers() {
       try {
         // Suspend on Pterodactyl
         if (server.pteroId && server.pteroPanelId) {
-          const panel = await prisma.pterodactylPanel.findUnique({
+          const panel = await db.pterodactylPanel.findUnique({
             where: { id: server.pteroPanelId },
           });
 
@@ -117,7 +114,7 @@ async function checkExpiredServers() {
         }
 
         // Update status
-        await prisma.server.update({
+        await db.server.update({
           where: { id: server.id },
           data: {
             status: 'suspended',
@@ -133,7 +130,7 @@ async function checkExpiredServers() {
         });
 
         // Create notification
-        await prisma.notification.create({
+        await db.notification.create({
           data: {
             userId: server.userId,
             title: 'Server Suspended',
@@ -165,7 +162,7 @@ async function sendExpiryReminders() {
     const nextWeek = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
 
     // Find servers expiring in the next week
-    const expiringServers = await prisma.server.findMany({
+    const expiringServers = await db.server.findMany({
       where: {
         expiresAt: {
           gte: now,
@@ -205,7 +202,7 @@ async function sendExpiryReminders() {
           });
 
           // Create notification
-          await prisma.notification.create({
+          await db.notification.create({
             data: {
               userId: server.userId,
               title: `Server Expiring Soon`,
@@ -225,69 +222,5 @@ async function sendExpiryReminders() {
     console.log(`✅ Sent ${reminderCount} expiry reminders`);
   } catch (error) {
     console.error('Error in sendExpiryReminders:', error);
-  }
-}
-
-// Process daily login rewards
-async function processDailyRewards() {
-  try {
-    console.log('💰 Processing daily rewards...');
-
-    const now = new Date();
-    const yesterday = new Date(now.getTime() - 24 * 60 * 60 * 1000);
-
-    // Get daily reward setting
-    const dailyRewardSetting = await prisma.settings.findUnique({
-      where: { key: 'coins_daily_reward' },
-    });
-
-    if (!dailyRewardSetting?.value?.enabled) {
-      console.log('Daily rewards disabled');
-      return;
-    }
-
-    const rewardAmount = parseInt(dailyRewardSetting.value.amount) || 100;
-
-    // Find users who logged in today but haven't claimed reward
-    const activeUsers = await prisma.user.findMany({
-      where: {
-        lastLoginReward: {
-          lt: yesterday,
-        },
-      },
-      take: 100,
-    });
-
-    let rewardedCount = 0;
-
-    for (const user of activeUsers) {
-      try {
-        await prisma.user.update({
-          where: { id: user.id },
-          data: {
-            coins: { increment: rewardAmount },
-            lastLoginReward: now,
-          },
-        });
-
-        await prisma.coinTransaction.create({
-          data: {
-            userId: user.id,
-            amount: rewardAmount,
-            balance: { increment: rewardAmount }, // This will be updated correctly
-            type: 'daily',
-            description: 'Daily login reward',
-          },
-        });
-
-        rewardedCount++;
-      } catch (error) {
-        console.error(`Error rewarding user ${user.id}:`, error);
-      }
-    }
-
-    console.log(`✅ Rewarded ${rewardedCount} users with ${rewardAmount} coins each`);
-  } catch (error) {
-    console.error('Error in processDailyRewards:', error);
   }
 }

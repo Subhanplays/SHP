@@ -1,9 +1,8 @@
 import nodemailer from 'nodemailer';
 
-// Create transporter
 const createTransporter = () => {
   if (!process.env.SMTP_HOST || !process.env.SMTP_USER) {
-    console.warn('⚠️ Email not configured. SMTP settings missing.');
+    console.warn('Email not configured. SMTP settings missing.');
     return null;
   }
 
@@ -21,21 +20,18 @@ const createTransporter = () => {
 export const sendEmail = async ({ to, subject, text, html }) => {
   try {
     const transporter = createTransporter();
-    
     if (!transporter) {
       console.log('Email not sent (SMTP not configured):', subject);
       return;
     }
 
     await transporter.sendMail({
-      from: process.env.EMAIL_FROM || 'noreply@shp.com',
+      from: process.env.EMAIL_FROM || 'noreply@example.com',
       to,
       subject,
       text,
       html: html || text.replace(/\n/g, '<br>'),
     });
-
-    console.log(`📧 Email sent to ${to}: ${subject}`);
   } catch (error) {
     console.error('Email send error:', error.message);
   }
@@ -44,8 +40,8 @@ export const sendEmail = async ({ to, subject, text, html }) => {
 export const sendWelcomeEmail = async (user) => {
   await sendEmail({
     to: user.email,
-    subject: 'Welcome to SHP!',
-    text: `Welcome ${user.username}!\n\nThank you for joining SHP (SubhanHostPanel). You've received a signup bonus of coins to get started.\n\nExplore our products and start your journey today!\n\nBest regards,\nThe SHP Team`,
+    subject: 'Welcome',
+    text: `Welcome ${user.username}!\n\nYour account is ready. Explore your dashboard to manage services and billing.`,
   });
 };
 
@@ -62,5 +58,34 @@ export const sendPasswordResetEmail = async (email, resetToken) => {
     to: email,
     subject: 'Password Reset Request',
     text: `You requested a password reset.\n\nClick the link to reset your password:\n${process.env.FRONTEND_URL}/reset-password?token=${resetToken}\n\nIf you didn't request this, please ignore this email.`,
+  });
+};
+
+export const sendServerDetailsEmail = async (user, server, panel = null) => {
+  const panelUrl = panel?.url || '';
+  await sendEmail({
+    to: user.email,
+    subject: `Your server "${server.name}" is ready`,
+    html: `
+      <h2>Your server is ready!</h2>
+      <p>Hi <strong>${user.username}</strong>,</p>
+      <p>Your server <strong>${server.name}</strong> has been provisioned successfully.</p>
+      <ul>
+        <li>RAM: ${server.ram}MB</li>
+        <li>CPU: ${server.cpu}%</li>
+        <li>Disk: ${server.disk}MB</li>
+        <li>Expires: ${new Date(server.expiresAt).toLocaleDateString()}</li>
+      </ul>
+      ${panelUrl ? `<p>Manage it at: <a href="${panelUrl}">${panelUrl}</a></p>` : ''}
+      <p>Thanks,<br/>The Team</p>
+    `,
+  });
+};
+
+export const sendCoinsCreditedEmail = async (user, amount, reason) => {
+  await sendEmail({
+    to: user.email,
+    subject: `${amount} Coins added to your account`,
+    text: `Hi ${user.username},\n\n${amount} coins have been added to your balance${reason ? ` (${reason})` : ''}.\n\nCurrent balance: ${user.coins} coins.`,
   });
 };

@@ -29,22 +29,47 @@ api.interceptors.request.use(
 api.interceptors.response.use(
   (response) => response,
   (error) => {
-    if (error.response?.status === 401) {
-      // Token expired or invalid
+    const status = error.response?.status;
+    if (status === 401) {
+      const current = window.location.pathname;
       localStorage.removeItem('authToken');
       localStorage.removeItem('user');
-      window.location.href = '/login';
+      if (current !== '/login') {
+        window.location.href = '/login';
+      }
+    } else if (status === 429) {
+      const retryAfter = error.response.headers?.['retry-after'];
+      const message = retryAfter
+        ? `Too many requests. Please try again in ${retryAfter} second${retryAfter === '1' ? '' : 's'}.`
+        : 'Too many requests. Please wait a moment and try again.';
+      error.response.data = {
+        ...(error.response.data || {}),
+        message,
+        error: {
+          ...(error.response.data?.error || {}),
+          message,
+          code: 'RATE_LIMITED',
+        },
+      };
     }
     return Promise.reject(error);
   }
 );
 
+const unwrap = (promise) => promise.then((res) => res.data?.data ?? res.data);
+
 // API methods
 export const authAPI = {
+  register: (data) => api.post('/auth/register', data),
+  login: (data) => api.post('/auth/login', data),
+  forgotPassword: (data) => api.post('/auth/forgot-password', data),
+  resetPassword: (data) => api.post('/auth/reset-password', data),
   getProfile: () => api.get('/auth/me'),
   updateProfile: (data) => api.put('/auth/me', data),
   linkDiscord: (data) => api.post('/auth/link-discord', data),
   unlinkDiscord: () => api.delete('/auth/unlink-discord'),
+  getGoogleUrl: () => unwrap(api.get('/auth/google/url')),
+  getDiscordUrl: () => unwrap(api.get('/auth/discord/url')),
   getNotifications: (params) => api.get('/auth/notifications', { params }),
   markNotificationRead: (id) => api.patch(`/auth/notifications/${id}/read`),
   markAllNotificationsRead: () => api.patch('/auth/notifications/read-all'),
@@ -72,6 +97,7 @@ export const orderAPI = {
   getAll: (params) => api.get('/orders', { params }),
   getById: (id) => api.get(`/orders/${id}`),
   cancel: (id) => api.post(`/orders/${id}/cancel`),
+  pay: (id, data) => api.post(`/orders/${id}/pay`, data),
 };
 
 export const serverAPI = {
@@ -82,15 +108,30 @@ export const serverAPI = {
   restart: (id) => api.post(`/servers/${id}/restart`),
   renew: (id, data) => api.post(`/servers/${id}/renew`, data),
   getConsole: (id) => api.get(`/pterodactyl/servers/${id}/console`),
+  getResources: (id) => api.get(`/pterodactyl/servers/${id}/resources`),
+  getPteroInfo: (id) => api.get(`/pterodactyl/servers/${id}/info`),
 };
 
 export const coinAPI = {
   getBalance: () => api.get('/coins/balance'),
   getTransactions: (params) => api.get('/coins/transactions', { params }),
+  claimDailyReward: () => api.post('/coins/daily-reward'),
+  getReferral: () => api.get('/coins/referral'),
+};
+
+export const couponAPI = {
+  validate: (params) => api.get('/coupons/validate', { params }),
+  getAllPublic: () => api.get('/coupons'),
+  getAll: () => api.get('/coupons/admin/all'),
+  create: (data) => api.post('/coupons/admin', data),
+  update: (id, data) => api.put(`/coupons/admin/${id}`, data),
+  remove: (id) => api.delete(`/coupons/admin/${id}`),
 };
 
 export const paymentAPI = {
-  createIntent: (data) => api.post('/payments/create-intent', data),
+  checkout: (data) => api.post('/payments/checkout', data),
+  complete: (data) => api.post('/payments/complete', data),
+  buyCoins: (data) => api.post('/payments/buy-coins', data),
   getAll: (params) => api.get('/payments', { params }),
 };
 
@@ -103,10 +144,14 @@ export const settingsAPI = {
 
 export const mediaAPI = {
   getAll: (params) => api.get('/media', { params }),
-  upload: (file) => api.post('/media/upload', file, {
-    headers: { 'Content-Type': 'multipart/form-data' },
-  }),
-  delete: (id) => api.delete(`/media/${id}`),
+  upload: (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return api.post('/media/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+  },
+  remove: (id) => api.delete(`/media/${id}`),
 };
 
 export const adminAPI = {
@@ -124,9 +169,14 @@ export const adminAPI = {
   suspendServer: (id) => api.post(`/admin/servers/${id}/suspend`),
   unsuspendServer: (id) => api.post(`/admin/servers/${id}/unsuspend`),
   deleteServer: (id) => api.delete(`/admin/servers/${id}`),
+  retryProvision: (id) => api.post(`/admin/servers/${id}/provision`),
   getPterodactylPanels: () => api.get('/admin/pterodactyl'),
   addPterodactylPanel: (data) => api.post('/admin/pterodactyl', data),
+  updatePterodactylPanel: (id, data) => api.put(`/admin/pterodactyl/${id}`, data),
+  testPterodactyl: (data) => api.post('/admin/pterodactyl/test', data),
   deletePterodactylPanel: (id) => api.delete(`/admin/pterodactyl/${id}`),
+  getCoinTransactions: (params) => api.get('/admin/coins/transactions', { params }),
+  getLogs: (params) => api.get('/admin/logs', { params }),
 };
 
 export default api;

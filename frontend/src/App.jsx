@@ -12,10 +12,15 @@ import DashboardLayout from './layouts/DashboardLayout';
 import AdminLayout from './layouts/AdminLayout';
 import AuthLayout from './layouts/AuthLayout';
 
+// Pages - Public
+import Landing from './pages/Landing';
+
 // Pages - Auth
 import Login from './pages/auth/Login';
 import Register from './pages/auth/Register';
 import ForgotPassword from './pages/auth/ForgotPassword';
+import ResetPassword from './pages/auth/ResetPassword';
+import SocialCallback from './pages/auth/SocialCallback';
 
 // Pages - User Dashboard
 import UserDashboard from './pages/dashboard/UserDashboard';
@@ -38,6 +43,8 @@ import AdminOrders from './pages/admin/Orders';
 import AdminServers from './pages/admin/Servers';
 import AdminSettings from './pages/admin/Settings';
 import AdminPterodactyl from './pages/admin/Pterodactyl';
+import AdminCoins from './pages/admin/Coins';
+import AdminCoupons from './pages/admin/Coupons';
 
 // Components
 import LoadingSpinner from './components/LoadingSpinner';
@@ -102,6 +109,7 @@ function App() {
         
         <Routes>
           {/* Public Routes */}
+          <Route path="/" element={<Landing />} />
           <Route path="/login" element={
             <AuthLayout>
               <Login />
@@ -117,6 +125,12 @@ function App() {
               <ForgotPassword />
             </AuthLayout>
           } />
+          <Route path="/reset-password" element={
+            <AuthLayout>
+              <ResetPassword />
+            </AuthLayout>
+          } />
+          <Route path="/auth/social" element={<SocialCallback />} />
 
           {/* User Dashboard Routes */}
           <Route path="/dashboard" element={
@@ -254,10 +268,23 @@ function App() {
               </AdminLayout>
             </ProtectedRoute>
           } />
+          <Route path="/admin/coins" element={
+            <ProtectedRoute requireAdmin>
+              <AdminLayout>
+                <AdminCoins />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
+          <Route path="/admin/coupons" element={
+            <ProtectedRoute requireAdmin>
+              <AdminLayout>
+                <AdminCoupons />
+              </AdminLayout>
+            </ProtectedRoute>
+          } />
 
           {/* Default Redirect */}
-          <Route path="/" element={<Navigate to="/dashboard" replace />} />
-          <Route path="*" element={<Navigate to="/dashboard" replace />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </AnimatePresence>
     </Router>

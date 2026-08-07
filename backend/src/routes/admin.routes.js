@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { authenticate, requireAdmin } from '../middleware/auth.middleware.js';
-import { prisma } from '../config/database.js';
+import { db } from '../config/database.js';
 import { pterodactylService } from '../services/pterodactyl.js';
 import { ApiError } from '../middleware/error.middleware.js';
 
@@ -22,23 +22,23 @@ router.get('/dashboard', async (req, res, next) => {
       activeServers,
       suspendedServers,
     ] = await Promise.all([
-      prisma.user.count(),
-      prisma.payment.aggregate({
+      db.user.count(),
+      db.payment.aggregate({
         where: { status: 'completed' },
         _sum: { amount: true },
       }),
-      prisma.coinTransaction.aggregate({
+      db.coinTransaction.aggregate({
         where: { amount: { gt: 0 } },
         _sum: { amount: true },
       }),
-      prisma.coinTransaction.aggregate({
+      db.coinTransaction.aggregate({
         where: { amount: { lt: 0 } },
         _sum: { amount: true },
       }),
-      prisma.server.count(),
-      prisma.order.count(),
-      prisma.server.count({ where: { status: 'running', deletedAt: null } }),
-      prisma.server.count({ where: { status: 'suspended' } }),
+      db.server.count(),
+      db.order.count(),
+      db.server.count({ where: { status: 'running', deletedAt: null } }),
+      db.server.count({ where: { status: 'suspended' } }),
     ]);
 
     res.json({
@@ -64,7 +64,7 @@ router.get('/users', async (req, res, next) => {
   try {
     const { search, role, limit = 20, page = 1 } = req.query;
 
-    const users = await prisma.user.findMany({
+    const users = await db.user.findMany({
       where: {
         ...(search && {
           OR: [
@@ -76,7 +76,6 @@ router.get('/users', async (req, res, next) => {
       },
       select: {
         id: true,
-        firebaseUid: true,
         username: true,
         email: true,
         avatar: true,
@@ -96,7 +95,7 @@ router.get('/users', async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.user.count({
+    const total = await db.user.count({
       where: {
         ...(search && {
           OR: [
@@ -130,7 +129,7 @@ router.get('/users/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const user = await prisma.user.findUnique({
+    const user = await db.user.findUnique({
       where: { id },
       include: {
         servers: {
@@ -159,9 +158,11 @@ router.get('/users/:id', async (req, res, next) => {
       throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
     }
 
+    const { password, ...safeUser } = user;
+
     res.json({
       success: true,
-      data: user,
+      data: safeUser,
     });
   } catch (error) {
     next(error);
@@ -174,7 +175,7 @@ router.put('/users/:id', async (req, res, next) => {
     const { id } = req.params;
     const { username, role, coins } = req.body;
 
-    const user = await prisma.user.update({
+    const user = await db.user.update({
       where: { id },
       data: {
         ...(username && { username }),
@@ -184,16 +185,16 @@ router.put('/users/:id', async (req, res, next) => {
 
     // If coins provided, adjust balance
     if (coins !== undefined) {
-      const currentUser = await prisma.user.findUnique({ where: { id } });
+      const currentUser = await db.user.findUnique({ where: { id } });
       const diff = coins - currentUser.coins;
 
       if (diff !== 0) {
-        await prisma.user.update({
+        await db.user.update({
           where: { id },
           data: { coins },
         });
 
-        await prisma.coinTransaction.create({
+        await db.coinTransaction.create({
           data: {
             userId: id,
             amount: diff,
@@ -224,7 +225,7 @@ router.post('/users/:id/coins', async (req, res, next) => {
       throw new ApiError(400, 'Amount is required', 'MISSING_AMOUNT');
     }
 
-    const user = await prisma.user.findUnique({ where: { id } });
+    const user = await db.user.findUnique({ where: { id } });
     if (!user) {
       throw new ApiError(404, 'User not found', 'USER_NOT_FOUND');
     }
@@ -235,12 +236,12 @@ router.post('/users/:id/coins', async (req, res, next) => {
       throw new ApiError(400, 'Cannot reduce coins below zero', 'INSUFFICIENT_COINS');
     }
 
-    await prisma.user.update({
+    await db.user.update({
       where: { id },
       data: { coins: newBalance },
     });
 
-    await prisma.coinTransaction.create({
+    await db.coinTransaction.create({
       data: {
         userId: id,
         amount,
@@ -267,7 +268,7 @@ router.get('/products', async (req, res, next) => {
   try {
     const { category, enabled, limit = 50, page = 1 } = req.query;
 
-    const products = await prisma.product.findMany({
+    const products = await db.product.findMany({
       where: {
         ...(category && { category }),
         ...(enabled !== undefined && { enabled: enabled === 'true' }),
@@ -277,7 +278,7 @@ router.get('/products', async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.product.count({
+    const total = await db.product.count({
       where: {
         ...(category && { category }),
         ...(enabled !== undefined && { enabled: enabled === 'true' }),
@@ -306,7 +307,7 @@ router.post('/products', async (req, res, next) => {
   try {
     const productData = req.body;
 
-    const product = await prisma.product.create({
+    const product = await db.product.create({
       data: productData,
     });
 
@@ -326,7 +327,7 @@ router.put('/products/:id', async (req, res, next) => {
     const { id } = req.params;
     const productData = req.body;
 
-    const product = await prisma.product.update({
+    const product = await db.product.update({
       where: { id },
       data: productData,
     });
@@ -346,7 +347,7 @@ router.delete('/products/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    await prisma.product.delete({
+    await db.product.delete({
       where: { id },
     });
 
@@ -364,7 +365,7 @@ router.get('/orders', async (req, res, next) => {
   try {
     const { status, paymentMethod, limit = 20, page = 1 } = req.query;
 
-    const orders = await prisma.order.findMany({
+    const orders = await db.order.findMany({
       where: {
         ...(status && { status }),
         ...(paymentMethod && { paymentMethod }),
@@ -389,7 +390,7 @@ router.get('/orders', async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.order.count({
+    const total = await db.order.count({
       where: {
         ...(status && { status }),
         ...(paymentMethod && { paymentMethod }),
@@ -418,7 +419,7 @@ router.get('/servers', async (req, res, next) => {
   try {
     const { status, limit = 20, page = 1 } = req.query;
 
-    const servers = await prisma.server.findMany({
+    const servers = await db.server.findMany({
       where: {
         ...(status && { status }),
       },
@@ -436,7 +437,7 @@ router.get('/servers', async (req, res, next) => {
       skip: (parseInt(page) - 1) * parseInt(limit),
     });
 
-    const total = await prisma.server.count({
+    const total = await db.server.count({
       where: {
         ...(status && { status }),
       },
@@ -464,7 +465,7 @@ router.post('/servers/:id/suspend', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findUnique({
+    const server = await db.server.findUnique({
       where: { id },
     });
 
@@ -474,7 +475,7 @@ router.post('/servers/:id/suspend', async (req, res, next) => {
 
     // Suspend on Pterodactyl
     if (server.pteroId && server.pteroPanelId) {
-      const panel = await prisma.pterodactylPanel.findUnique({
+      const panel = await db.pterodactylPanel.findUnique({
         where: { id: server.pteroPanelId },
       });
 
@@ -483,7 +484,7 @@ router.post('/servers/:id/suspend', async (req, res, next) => {
       }
     }
 
-    await prisma.server.update({
+    await db.server.update({
       where: { id },
       data: {
         status: 'suspended',
@@ -505,7 +506,7 @@ router.post('/servers/:id/unsuspend', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findUnique({
+    const server = await db.server.findUnique({
       where: { id },
     });
 
@@ -515,7 +516,7 @@ router.post('/servers/:id/unsuspend', async (req, res, next) => {
 
     // Unsuspend on Pterodactyl
     if (server.pteroId && server.pteroPanelId) {
-      const panel = await prisma.pterodactylPanel.findUnique({
+      const panel = await db.pterodactylPanel.findUnique({
         where: { id: server.pteroPanelId },
       });
 
@@ -524,7 +525,7 @@ router.post('/servers/:id/unsuspend', async (req, res, next) => {
       }
     }
 
-    await prisma.server.update({
+    await db.server.update({
       where: { id },
       data: {
         status: 'running',
@@ -546,7 +547,7 @@ router.delete('/servers/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    const server = await prisma.server.findUnique({
+    const server = await db.server.findUnique({
       where: { id },
     });
 
@@ -556,7 +557,7 @@ router.delete('/servers/:id', async (req, res, next) => {
 
     // Delete from Pterodactyl
     if (server.pteroId && server.pteroPanelId) {
-      const panel = await prisma.pterodactylPanel.findUnique({
+      const panel = await db.pterodactylPanel.findUnique({
         where: { id: server.pteroPanelId },
       });
 
@@ -565,7 +566,7 @@ router.delete('/servers/:id', async (req, res, next) => {
       }
     }
 
-    await prisma.server.update({
+    await db.server.update({
       where: { id },
       data: {
         status: 'deleted',
@@ -582,10 +583,102 @@ router.delete('/servers/:id', async (req, res, next) => {
   }
 });
 
+// Retry provisioning for a pending/failed server
+router.post('/servers/:id/provision', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { retryProvision } = await import('../services/provision.js');
+    const result = await retryProvision(id);
+
+    if (!result.provisioned) {
+      throw new ApiError(400, `Provisioning failed: ${result.reason || 'Unknown error'}`, 'PROVISION_FAILED');
+    }
+
+    res.json({
+      success: true,
+      message: 'Server provisioned successfully',
+      data: result.server,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// All coin transactions (for coin management / history)
+router.get('/coins/transactions', async (req, res, next) => {
+  try {
+    const { search, type, limit = 50, page = 1 } = req.query;
+
+    let where = {};
+    if (type) where.type = type;
+
+    const transactions = await db.coinTransaction.findMany({
+      where,
+      include: {
+        user: { select: { id: true, username: true, email: true, avatar: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+      skip: (parseInt(page) - 1) * parseInt(limit),
+    });
+
+    // Apply in-memory search filter
+    let filtered = transactions;
+    if (search) {
+      const s = String(search).toLowerCase();
+      filtered = filtered.filter(
+        (t) => t.user?.username?.toLowerCase().includes(s) || t.user?.email?.toLowerCase().includes(s) || String(t.description || '').toLowerCase().includes(s)
+      );
+    }
+
+    res.json({
+      success: true,
+      data: {
+        transactions: filtered,
+        pagination: { total: filtered.length, page: parseInt(page), limit: parseInt(limit) },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Activity logs
+router.get('/logs', async (req, res, next) => {
+  try {
+    const { action, userId, limit = 50, page = 1 } = req.query;
+
+    const logs = await db.log.findMany({
+      where: {
+        ...(action && { action }),
+        ...(userId && { userId }),
+      },
+      include: {
+        user: { select: { id: true, username: true, email: true, avatar: true } },
+      },
+      orderBy: { createdAt: 'desc' },
+      take: parseInt(limit),
+      skip: (parseInt(page) - 1) * parseInt(limit),
+    });
+
+    const total = await db.log.count({ where: { ...(action && { action }), ...(userId && { userId }) } });
+
+    res.json({
+      success: true,
+      data: {
+        logs,
+        pagination: { total, page: parseInt(page), limit: parseInt(limit), pages: Math.ceil(total / parseInt(limit)) },
+      },
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Pterodactyl panels management
 router.get('/pterodactyl', async (req, res, next) => {
   try {
-    const panels = await prisma.pterodactylPanel.findMany({
+    const panels = await db.pterodactylPanel.findMany({
       select: {
         id: true,
         name: true,
@@ -618,16 +711,17 @@ router.post('/pterodactyl', async (req, res, next) => {
     const { name, url, appApiKey, clientApiKey, nodeId, eggId, locationId } = req.body;
 
     // Test connection first
-    const testResult = await pterodactylService.testConnection(url, appApiKey);
+    const testUrl = pterodactylService.normalizeUrl(url);
+    const testResult = await pterodactylService.testConnection(testUrl, appApiKey);
     
     if (!testResult.success) {
       throw new ApiError(400, `Cannot connect to panel: ${testResult.error}`, 'CONNECTION_FAILED');
     }
 
-    const panel = await prisma.pterodactylPanel.create({
+    const panel = await db.pterodactylPanel.create({
       data: {
         name,
-        url,
+        url: testUrl,
         appApiKey,
         clientApiKey,
         nodeId,
@@ -653,13 +747,74 @@ router.delete('/pterodactyl/:id', async (req, res, next) => {
   try {
     const { id } = req.params;
 
-    await prisma.pterodactylPanel.delete({
+    await db.pterodactylPanel.delete({
       where: { id },
     });
 
     res.json({
       success: true,
       message: 'Panel deleted successfully',
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Test a Pterodactyl connection (without saving)
+router.post('/pterodactyl/test', async (req, res, next) => {
+  try {
+    const { url, appApiKey } = req.body;
+    if (!url || !appApiKey) {
+      throw new ApiError(400, 'Panel URL and Application API Key are required', 'MISSING_FIELDS');
+    }
+
+    const result = await pterodactylService.testConnection(url, appApiKey);
+
+    res.json({
+      success: result.success,
+      data: result,
+      message: result.success ? 'Connection successful' : `Connection failed: ${result.error}`,
+    });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Update Pterodactyl panel
+router.put('/pterodactyl/:id', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { name, url, appApiKey, clientApiKey, nodeId, eggId, locationId, enabled } = req.body;
+
+    const panel = await db.pterodactylPanel.findUnique({ where: { id } });
+    if (!panel) throw new ApiError(404, 'Panel not found', 'PANEL_NOT_FOUND');
+
+    const data = {};
+    if (name !== undefined) data.name = name;
+    if (url !== undefined) data.url = url;
+    if (appApiKey) data.appApiKey = appApiKey;
+    if (clientApiKey) data.clientApiKey = clientApiKey;
+    if (nodeId !== undefined) data.nodeId = nodeId;
+    if (eggId !== undefined) data.eggId = eggId;
+    if (locationId !== undefined) data.locationId = locationId;
+    if (enabled !== undefined) data.enabled = enabled === true || enabled === 'true';
+
+    // Re-test connection if keys/url changed
+    if (data.url || data.appApiKey) {
+      if (data.url) data.url = pterodactylService.normalizeUrl(data.url);
+      const testUrl = data.url || panel.url;
+      const testKey = data.appApiKey || panel.appApiKey;
+      const test = await pterodactylService.testConnection(testUrl, testKey);
+      data.status = test.success ? 'online' : 'offline';
+      data.lastChecked = new Date();
+    }
+
+    const updated = await db.pterodactylPanel.update({ where: { id }, data });
+
+    res.json({
+      success: true,
+      message: 'Panel updated successfully',
+      data: updated,
     });
   } catch (error) {
     next(error);
