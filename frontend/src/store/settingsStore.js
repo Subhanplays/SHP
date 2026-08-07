@@ -55,7 +55,7 @@ const useSettingsStore = create((set, get) => ({
     fullName: 'White-Label Hosting Panel',
     logo: null,
     favicon: null,
-    footerText: `Â© ${new Date().getFullYear()} White-Label Hosting Panel. All rights reserved.`,
+    footerText: `© ${new Date().getFullYear()} White-Label Hosting Panel. All rights reserved.`,
     browserTitle: 'Hosting Panel',
   },
   theme: {
@@ -188,4 +188,8 @@ const useSettingsStore = create((set, get) => ({
 }));
 
 export default useSettingsStore;
+<<<<<<< HEAD
+
+=======
+>>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
 
