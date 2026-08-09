@@ -2,8 +2,6 @@
 
 A complete professional hosting management and billing platform - a WHMCS-style alternative designed for hosting companies.
 
-![SHP Dashboard](https://via.placeholder.com/800x400/0f0f1a/6366f1?text=SHP+Dashboard)
-
 ## Screenshots
 
 ### Landing Page
