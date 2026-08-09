@@ -131,7 +131,6 @@ export const couponAPI = {
 export const paymentAPI = {
   checkout: (data) => api.post('/payments/checkout', data),
   complete: (data) => api.post('/payments/complete', data),
-  buyCoins: (data) => api.post('/payments/buy-coins', data),
   getAll: (params) => api.get('/payments', { params }),
 };
 

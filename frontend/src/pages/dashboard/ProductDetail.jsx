@@ -241,7 +241,7 @@ const ProductDetail = () => {
 
           {paymentMethod === 'coins' && getCoins() < product.coinPrice && (
             <div style={{ marginBottom: '1rem', padding: '0.75rem 1rem', borderRadius: 'var(--radius-sm)', background: 'rgba(239,68,68,0.1)', border: '1px solid rgba(239,68,68,0.2)', color: '#ef4444', fontSize: '0.85rem' }}>
-              Not enough coins. <Link to="/billing" style={{ color: '#ef4444', fontWeight: 700 }}>Buy more coins</Link> or pay with card.
+              Not enough coins. Contact support to add coins, or pay with card.
             </div>
           )}
 

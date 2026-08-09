@@ -4,34 +4,12 @@ import { db } from '../config/database.js';
 import { ApiError } from '../middleware/error.middleware.js';
 import { finalizeOrder } from './order.routes.js';
 import { createLog } from '../utils/logs.js';
-import { sendCoinsCreditedEmail } from '../utils/email.js';
 import { sendDiscordNotification } from '../utils/discord.js';
 
 const router = Router();
 
 const completePayment = async (payment) => {
   await db.payment.update({ where: { id: payment.id }, data: { status: 'completed' } });
-
-  // Coin top-up
-  if (payment.method === 'coins_topup' || (payment.gatewayData?.purpose === 'coins')) {
-    const amount = Math.round(payment.gatewayData?.coinAmount ?? payment.amount);
-    const user = await db.user.findUnique({ where: { id: payment.userId } });
-    const newBalance = (user?.coins || 0) + amount;
-    await db.user.update({ where: { id: payment.userId }, data: { coins: newBalance } });
-    await db.coinTransaction.create({
-      data: {
-        userId: payment.userId,
-        amount,
-        balance: newBalance,
-        type: 'topup',
-        description: `Purchased ${amount} SHP Coins`,
-        referenceId: payment.id,
-      },
-    });
-    if (user) await sendCoinsCreditedEmail({ ...user, coins: newBalance }, amount, 'coin purchase');
-    await sendDiscordNotification('Coins Purchased', `**${user?.username}** bought **${amount}** SHP Coins via ${payment.method}.`, 0xfbbf24);
-    return { kind: 'coins', amount };
-  }
 
   // Order payment
   const orderId = payment.gatewayData?.orderId;
@@ -105,35 +83,6 @@ router.post('/complete', authenticate, async (req, res, next) => {
     await createLog({ action: 'payment.completed', userId: req.userId, details: { paymentId, result }, req });
 
     res.json({ success: true, message: 'Payment completed successfully', data: result });
-  } catch (error) {
-    next(error);
-  }
-});
-
-// Buy SHP Coins
-router.post('/buy-coins', authenticate, async (req, res, next) => {
-  try {
-    const { amount, method = 'stripe' } = req.body;
-    const coinAmount = Math.round(amount);
-
-    if (!coinAmount || coinAmount <= 0) throw new ApiError(400, 'Invalid coin amount', 'INVALID_AMOUNT');
-
-    // Simpler sandbox flow: charge $1 per 100 coins (configurable in settings later)
-    const settings = await db.settings.findUnique({ where: { key: 'coins' } });
-    const rate = parseFloat(settings?.value?.coinRate) || 100; // coins per $1
-    const price = Math.max(0.5, coinAmount / rate);
-
-    const payment = await db.payment.create({
-      data: {
-        userId: req.userId,
-        amount: price,
-        method,
-        status: 'pending',
-        gatewayData: { purpose: 'coins', coinAmount },
-      },
-    });
-
-    res.json({ success: true, data: { paymentId: payment.id, coinAmount, price, clientSecret: `sandbox_${payment.id}` } });
   } catch (error) {
     next(error);
   }

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { FaCoins, FaGift, FaUserFriends, FaCreditCard, FaLink, FaCopy, FaCheck, FaArrowRight } from 'react-icons/fa';
-import { coinAPI, paymentAPI, userAPI } from '../../api/axios';
+import { FaCoins, FaGift, FaUserFriends, FaLink, FaCopy, FaCheck, FaArrowRight } from 'react-icons/fa';
+import { coinAPI, userAPI } from '../../api/axios';
 import useAuthStore from '../../store/authStore';
 import useSettingsStore from '../../store/settingsStore';
 import PageHeader from '../../components/PageHeader';
@@ -20,12 +20,8 @@ const Billing = () => {
   const [payments, setPayments] = useState([]);
   const [referral, setReferral] = useState(null);
   const [claiming, setClaiming] = useState(false);
-  const [buyAmount, setBuyAmount] = useState(1000);
-  const [buying, setBuying] = useState(false);
   const [copied, setCopied] = useState(false);
   const [loading, setLoading] = useState(true);
-
-  const coinRate = coinsSettings?.coinRate || 100;
 
   useEffect(() => {
     load();
@@ -66,32 +62,15 @@ const Billing = () => {
     }
   };
 
-  const handleBuyCoins = async () => {
-    setBuying(true);
-    try {
-      const res = await paymentAPI.buyCoins({ amount: buyAmount, method: 'stripe' });
-      const { paymentId } = res.data.data;
-      await paymentAPI.complete({ paymentId });
-      toast.success(`${buyAmount.toLocaleString()} coins added to your balance!`);
-      load();
-    } catch (error) {
-      toast.error(error.response?.data?.error?.message || error.response?.data?.message || 'Purchase failed');
-    } finally {
-      setBuying(false);
-    }
-  };
-
   const copyLink = () => {
     navigator.clipboard.writeText(referral?.referralLink || '');
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
   };
 
-  const suggested = [1000, 2500, 5000, 10000];
-
   return (
     <div>
-      <PageHeader title="Billing" subtitle="Manage your SHP Coins, top-ups and payment history." />
+      <PageHeader title="Billing" subtitle="Manage your SHP Coins, rewards and payment history." />
 
       {/* Balance banner */}
       <motion.div className="glass-card" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} style={{ marginBottom: '1.5rem', background: 'linear-gradient(135deg, rgba(251,191,36,0.12), rgba(245,158,11,0.06))', borderColor: 'rgba(251,191,36,0.25)' }}>
@@ -139,50 +118,6 @@ const Billing = () => {
         <>
           {tab === 'Coins' && (
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '1.5rem' }}>
-              {/* Buy coins */}
-              <div className="glass-card">
-                <h3 style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <FaCreditCard style={{ color: 'var(--primary-color)' }} /> Buy Coins
-                </h3>
-                <p style={{ color: 'var(--text-secondary)', fontSize: '0.85rem', marginBottom: '1rem' }}>
-                  {formatCurrency(1)} = {coinRate.toLocaleString()} SHP Coins
-                </p>
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.5rem', marginBottom: '1rem' }}>
-                  {suggested.map((amt) => (
-                    <button
-                      key={amt}
-                      onClick={() => setBuyAmount(amt)}
-                      style={{
-                        padding: '0.75rem',
-                        borderRadius: 'var(--radius-sm)',
-                        border: `1px solid ${buyAmount === amt ? 'var(--primary-color)' : 'var(--glass-border)'}`,
-                        background: buyAmount === amt ? 'rgba(99,102,241,0.12)' : 'var(--glass-bg)',
-                        color: 'var(--text-primary)',
-                        cursor: 'pointer',
-                        fontWeight: 600,
-                        fontSize: '0.85rem',
-                      }}
-                    >
-                      {amt.toLocaleString()} coins
-                    </button>
-                  ))}
-                </div>
-                <div style={{ display: 'flex', gap: '0.5rem', marginBottom: '1rem' }}>
-                  <input
-                    type="number"
-                    value={buyAmount}
-                    onChange={(e) => setBuyAmount(Math.max(0, parseInt(e.target.value) || 0))}
-                    className="form-control"
-                    min={100}
-                    step={100}
-                    style={{ textAlign: 'center' }}
-                  />
-                </div>
-                <motion.button className="btn-primary" style={{ width: '100%' }} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} onClick={handleBuyCoins} disabled={buying || buyAmount < 100}>
-                  {buying ? 'Processing...' : `Buy ${buyAmount.toLocaleString()} coins for ${formatCurrency(Math.max(0.5, buyAmount / coinRate))}`}
-                </motion.button>
-              </div>
-
               {/* Referral */}
               <div className="glass-card">
                 <h3 style={{ margin: '0 0 1rem', fontSize: '1.05rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
