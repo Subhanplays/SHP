@@ -1,4 +1,4 @@
-import { create } from 'zustand';
+﻿import { create } from 'zustand';
 import { settingsAPI } from '../api/axios';
 
 const DARK_VARS = {
@@ -55,7 +55,7 @@ const useSettingsStore = create((set, get) => ({
     fullName: 'White-Label Hosting Panel',
     logo: null,
     favicon: null,
-    footerText: `� ${new Date().getFullYear()} White-Label Hosting Panel. All rights reserved.`,
+    footerText: `© ${new Date().getFullYear()} White-Label Hosting Panel. All rights reserved.`,
     browserTitle: 'Hosting Panel',
   },
   theme: {
@@ -84,7 +84,6 @@ const useSettingsStore = create((set, get) => ({
 
       const theme = { ...get().theme, ...(s.theme || {}) };
       const darkMode = theme.darkMode !== false;
-
       const branding = { ...get().branding, ...(s.branding || {}) };
       const background = { ...get().background, ...(s.background || {}) };
 
@@ -188,8 +187,3 @@ const useSettingsStore = create((set, get) => ({
 }));
 
 export default useSettingsStore;
-<<<<<<< HEAD
-
-=======
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
-

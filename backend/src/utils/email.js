@@ -86,12 +86,6 @@ export const sendCoinsCreditedEmail = async (user, amount, reason) => {
   await sendEmail({
     to: user.email,
     subject: `${amount} Coins added to your account`,
-<<<<<<< HEAD
     text: `Hi ${user.username},\n\n${amount} coins have been added to your balance${reason ? ` (${reason})` : ''}.\n\nCurrent balance: ${user.coins} coins.`,
   });
 };
-=======
-    text: `Hi ${user.username},\n\n${amount} SHP Coins have been added to your balance${reason ? ` (${reason})` : ''}.\n\nCurrent balance: ${user.coins} SHP Coins.`,
-  });
-};
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3

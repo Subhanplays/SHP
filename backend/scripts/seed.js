@@ -1,25 +1,15 @@
-import bcrypt from 'bcryptjs';
+﻿import bcrypt from 'bcryptjs';
 import { db } from '../src/config/database.js';
 
 const seed = async () => {
   await db.$connect();
-<<<<<<< HEAD
   console.log('Connected to database');
 
-=======
-  console.log('🗄️  Connected to SQLite database');
-
-  // 1. Create admin user if none exists
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
   const userCount = await db.user.count({ where: { role: { in: ['admin', 'superadmin'] } } });
 
   if (userCount === 0) {
     const username = process.env.ADMIN_USERNAME || 'admin';
-<<<<<<< HEAD
     const email = process.env.ADMIN_EMAIL || 'admin@example.com';
-=======
-    const email = process.env.ADMIN_EMAIL || 'admin@shp.com';
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
     const password = process.env.ADMIN_PASSWORD || 'admin123';
 
     const hashedPassword = await bcrypt.hash(password, 10);
@@ -34,7 +24,6 @@ const seed = async () => {
       },
     });
 
-<<<<<<< HEAD
     console.log(`Admin user created: ${email} / ${password}`);
   } else {
     console.log('Admin user already exists, skipping');
@@ -50,24 +39,6 @@ const seed = async () => {
         footerText: `© ${new Date().getFullYear()} White-Label Hosting Panel. All rights reserved.`,
         copyright: `© ${new Date().getFullYear()} White-Label Hosting Panel. All rights reserved.`,
         browserTitle: 'Hosting Panel',
-=======
-    console.log(`✅ Admin user created: ${email} / ${password}`);
-  } else {
-    console.log('ℹ️  Admin user already exists, skipping');
-  }
-
-  // 2. Create default settings if missing
-  const defaults = {
-    branding: {
-      value: {
-        panelName: 'SHP',
-        fullName: 'SubhanHostPanel',
-        logo: null,
-        favicon: null,
-        footerText: '© 2026 SubhanHostPanel. All rights reserved.',
-        copyright: '© 2026 SubhanHostPanel. All rights reserved.',
-        browserTitle: 'SHP - SubhanHostPanel',
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
       },
       category: 'branding',
     },
@@ -96,8 +67,6 @@ const seed = async () => {
       },
       category: 'coins',
     },
-<<<<<<< HEAD
-=======
     coins_signup_reward: {
       value: { enabled: true, amount: 1000 },
       category: 'coins',
@@ -106,7 +75,6 @@ const seed = async () => {
       value: { enabled: true, amount: 100 },
       category: 'coins',
     },
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
     grace_period_days: {
       value: { days: 7 },
       category: 'general',
@@ -132,11 +100,7 @@ const seed = async () => {
         enabled: true,
         hero: {
           title: 'Game Hosting Done Right',
-<<<<<<< HEAD
           subtitle: 'Premium hosting for Minecraft, VPS, game servers, and bots.',
-=======
-          subtitle: 'Premium Minecraft, VPS and game servers powered by SHP.',
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
           buttonText: 'Get Started',
           buttonUrl: '/register',
           image: null,
@@ -144,7 +108,6 @@ const seed = async () => {
         features: [
           { icon: 'bolt', title: 'Instant Setup', description: 'Servers are provisioned automatically within seconds of payment.' },
           { icon: 'shield', title: 'DDoS Protection', description: 'Every server is protected by enterprise-grade DDoS mitigation.' },
-<<<<<<< HEAD
           { icon: 'support', title: '24/7 Support', description: 'Your team can help customers whenever they need assistance.' },
         ],
         reviews: [
@@ -155,18 +118,6 @@ const seed = async () => {
         faq: [
           { q: 'How fast is setup?', a: 'Servers are provisioned automatically as soon as payment is confirmed, usually within a minute.' },
           { q: 'What payment methods do you accept?', a: 'We accept coins, cards (Stripe), PayPal and crypto.' },
-=======
-          { icon: 'support', title: '24/7 Support', description: 'Our team is always available to help you get the most out of your servers.' },
-        ],
-        reviews: [
-          { name: 'Alex Johnson', role: 'Minecraft Owner', content: 'Best hosting panel I have ever used. Setup took less than a minute!', rating: 5 },
-          { name: 'Sarah Chen', role: 'Bot Developer', content: 'Amazing uptime and the coin system makes it super easy to manage billing.', rating: 5 },
-          { name: 'Mike Torres', role: 'VPS Admin', content: 'Blazing fast servers and a gorgeous panel. Highly recommended.', rating: 4 },
-        ],
-        faq: [
-          { q: 'How fast is setup?', a: 'Servers are provisioned automatically as soon as payment is confirmed, usually within a minute.' },
-          { q: 'What payment methods do you accept?', a: 'We accept SHP Coins, cards (Stripe), PayPal and crypto.' },
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
           { q: 'Can I upgrade my server later?', a: 'Yes, you can upgrade your resources at any time from your dashboard.' },
         ],
       },
@@ -181,7 +132,6 @@ const seed = async () => {
   for (const [key, setting] of Object.entries(defaults)) {
     const existing = await db.settings.findUnique({ where: { key } });
     if (!existing) {
-<<<<<<< HEAD
       await db.settings.create({ data: { key, value: setting.value, category: setting.category } });
       console.log(`Setting created: ${key}`);
     }
@@ -189,91 +139,6 @@ const seed = async () => {
 
   await db.$disconnect();
   console.log('Seeding complete');
-=======
-      await db.settings.create({
-        data: { key, value: setting.value, category: setting.category },
-      });
-      console.log(`✅ Setting created: ${key}`);
-    } else {
-      // Merge new default keys into existing values (preserves admin values)
-      const merged = {
-        ...(existing.value && typeof existing.value === 'object' ? existing.value : {}),
-        ...setting.value,
-      };
-      const mergedString = JSON.stringify(merged) !== JSON.stringify(existing.value);
-      if (mergedString) {
-        await db.settings.update({ where: { key }, data: { value: merged, category: setting.category } });
-        console.log(`🔄 Setting updated: ${key}`);
-      }
-    }
-  }
-
-  // 3. Seed a demo product if there are none
-  const productCount = await db.product.count();
-  if (productCount === 0) {
-    await db.product.create({
-      data: {
-        name: 'Minecraft Starter',
-        description: '4GB RAM Minecraft server with DDoS protection and instant setup.',
-        category: 'minecraft',
-        price: 5,
-        coinPrice: 5000,
-        billingCycle: 'monthly',
-        ram: 4096,
-        cpu: 200,
-        disk: 40000,
-        databases: 1,
-        backups: 3,
-        node: null,
-        egg: null,
-        allocation: null,
-        enabled: true,
-      },
-    });
-    await db.product.create({
-      data: {
-        name: 'VPS Basic',
-        description: '4 vCPU, 8GB RAM KVM VPS with full root access.',
-        category: 'vps',
-        price: 10,
-        coinPrice: 10000,
-        billingCycle: 'monthly',
-        ram: 8192,
-        cpu: 400,
-        disk: 80000,
-        databases: 0,
-        backups: 2,
-        node: null,
-        egg: null,
-        allocation: null,
-        enabled: true,
-      },
-    });
-    await db.product.create({
-      data: {
-        name: 'Bot Hosting Standard',
-        description: 'Perfect for Discord bots. 2GB RAM, runs 24/7.',
-        category: 'bot',
-        price: 3,
-        coinPrice: 3000,
-        billingCycle: 'monthly',
-        ram: 2048,
-        cpu: 100,
-        disk: 10000,
-        databases: 0,
-        backups: 1,
-        node: null,
-        egg: null,
-        allocation: null,
-        enabled: true,
-      },
-    });
-    console.log('✅ Demo products created');
-  }
-
-  await db.$disconnect();
-  console.log('🎉 Seeding complete');
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
 };
 
 seed().catch(async (error) => {
@@ -281,7 +146,3 @@ seed().catch(async (error) => {
   await db.$disconnect();
   process.exit(1);
 });
-<<<<<<< HEAD
-
-=======
->>>>>>> 2fcb765a8dff6dee639ecb4dfe2738a2ffff9cf3
