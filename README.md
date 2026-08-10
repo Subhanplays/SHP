@@ -76,7 +76,7 @@ A complete professional hosting management and billing platform - a WHMCS-style 
 
 ### 1. Clone the Repository
 ```bash
-git clone https://github.com/yourusername/shp.git
+git clone https://github.com/subhanplays/shp.git
 cd shp
 ```
 
