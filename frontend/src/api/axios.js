@@ -90,6 +90,7 @@ export const productAPI = {
   getAll: (params) => api.get('/products', { params }),
   getById: (id) => api.get(`/products/${id}`),
   getCategories: () => api.get('/products/categories/list'),
+  getConfig: (id) => api.get(`/products/${id}/config`),
 };
 
 export const orderAPI = {

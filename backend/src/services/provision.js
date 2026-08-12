@@ -13,8 +13,9 @@ const toSafeName = (name) =>
     .slice(0, 32);
 
 // Provision a Pterodactyl server for a completed order.
+// options: object of egg env variable -> value chosen at purchase (e.g. VERSION).
 // Returns { provisioned: boolean, server, reason? }
-export const provisionOrder = async (orderId) => {
+export const provisionOrder = async (orderId, options = {}) => {
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: {
@@ -95,6 +96,14 @@ export const provisionOrder = async (orderId) => {
     let allocationId = product.allocation || null;
     let nodeId = panel.nodeId || product.node || null;
 
+    // Apply the software/version/etc. options chosen at purchase. These take
+    // priority over egg defaults so Pterodactyl's required vars are satisfied.
+    for (const [key, value] of Object.entries(options || {})) {
+      if (value !== undefined && value !== null && value !== '') {
+        environment[key] = String(value);
+      }
+    }
+
     if (eggId) {
       try {
         const eggs = await pterodactylService.getEggs(panelUrl, panel.appApiKey);
@@ -108,8 +117,14 @@ export const provisionOrder = async (orderId) => {
           for (const v of vars) {
             const a = v.attributes || v;
             const key = a.env_variable;
-            if (key && a.default_value !== undefined && a.default_value !== null && a.default_value !== '') {
+            if (!key) continue;
+            // Required variables may have no default. Provide sensible fallbacks
+            // so Pterodactyl's required-field validation never fails.
+            if (a.default_value !== undefined && a.default_value !== null && a.default_value !== '') {
               environment[key] = a.default_value;
+            } else if (a.rules && String(a.rules).includes('required')) {
+              const fb = { BUILD_NUMBER: 'latest', VERSION: 'latest', SERVER_JARFILE: 'server.jar' }[key] || '';
+              environment[key] = fb;
             }
           }
         } else {

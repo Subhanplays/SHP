@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaServer, FaDatabase, FaArchive, FaCoins, FaCreditCard, FaTag, FaCheck, FaArrowLeft, FaInfoCircle } from 'react-icons/fa';
+import { FaServer, FaDatabase, FaArchive, FaCoins, FaCreditCard, FaTag, FaCheck, FaArrowLeft, FaInfoCircle, FaBoxOpen, FaTag as FaVersion } from 'react-icons/fa';
 import { productAPI, orderAPI, paymentAPI, couponAPI } from '../../api/axios';
 import useAuthStore from '../../store/authStore';
 import useSettingsStore from '../../store/settingsStore';
@@ -20,12 +20,32 @@ const ProductDetail = () => {
   const [appliedCoupon, setAppliedCoupon] = useState(null);
   const [couponLoading, setCouponLoading] = useState(false);
   const [ordering, setOrdering] = useState(false);
+  const [fields, setFields] = useState([]);
+  const [choices, setChoices] = useState({});
 
   useEffect(() => {
     productAPI.getById(id)
       .then((res) => setProduct(res.data.data))
       .catch(() => toast.error('Product not found'))
       .finally(() => setLoading(false));
+    productAPI.getConfig(id)
+      .then((res) => {
+        const f = res.data?.data?.fields || [];
+        setFields(f);
+        // Seed defaults
+        const init = {};
+        f.forEach((field) => {
+          if (field.options?.length) {
+            init[field.env] = field.options[0];
+          } else if (field.defaultValue) {
+            init[field.env] = field.defaultValue;
+          } else {
+            init[field.env] = '';
+          }
+        });
+        setChoices(init);
+      })
+      .catch(() => setFields([]));
   }, [id]);
 
   if (loading) {
@@ -71,12 +91,19 @@ const ProductDetail = () => {
   };
 
   const handleOrder = async () => {
+    // Validate required selections
+    const missing = fields.find((f) => (f.required || f.options?.length) && !String(choices[f.env] || '').trim());
+    if (missing) {
+      toast.error(`Please select ${missing.label || missing.env}`);
+      return;
+    }
     setOrdering(true);
     try {
       const res = await orderAPI.create({
         productId: product.id,
         paymentMethod,
         couponCode: appliedCoupon?.code || undefined,
+        options: choices,
       });
       const order = res.data.data;
 
@@ -197,6 +224,50 @@ const ProductDetail = () => {
               </p>
             )}
           </div>
+
+          {/* Software / Version picker */}
+          {fields.length > 0 && (
+            <div style={{ marginBottom: '1.5rem' }} className="glass-card">
+              <h3 style={{ margin: 0, marginBottom: '0.75rem', fontSize: '1rem', fontWeight: 700, display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                <FaBoxOpen style={{ color: 'var(--primary-color)' }} /> Choose your server
+              </h3>
+              <div style={{ display: 'grid', gap: '0.9rem' }}>
+                {fields.map((field, idx) => {
+                  const isFirst = idx === 0;
+                  const Icon = isFirst ? FaBoxOpen : FaVersion;
+                  return (
+                    <div key={field.env}>
+                      <label style={{ display: 'block', marginBottom: '0.4rem', fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                        <Icon style={{ marginRight: '0.35rem', color: 'var(--primary-color)' }} />
+                        {field.label || (isFirst ? 'Software' : 'Version')}
+                        {field.options?.length ? '' : ' (type version)'}
+                      </label>
+                      {field.options?.length ? (
+                        <select
+                          className="form-control"
+                          value={choices[field.env] || ''}
+                          onChange={(e) => setChoices({ ...choices, [field.env]: e.target.value })}
+                        >
+                          <option value="">Select...</option>
+                          {field.options.map((o) => (
+                            <option key={o} value={o}>{o}</option>
+                          ))}
+                        </select>
+                      ) : (
+                        <input
+                          className="form-control"
+                          type="text"
+                          placeholder={field.defaultValue || 'e.g. 1.21.1'}
+                          value={choices[field.env] || ''}
+                          onChange={(e) => setChoices({ ...choices, [field.env]: e.target.value })}
+                        />
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
 
           {/* Payment method */}
           <div style={{ marginBottom: '1.5rem' }}>

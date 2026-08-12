@@ -83,7 +83,7 @@ const creditReferrer = async (order, user) => {
 };
 
 // Finalize an order: create invoice, credit referrer, provision server
-const finalizeOrder = async (orderId) => {
+const finalizeOrder = async (orderId, options = {}) => {
   const order = await db.order.findUnique({
     where: { id: orderId },
     include: { user: true, items: { include: { product: true } } },
@@ -105,7 +105,7 @@ const finalizeOrder = async (orderId) => {
   }
 
   await creditReferrer(order, order.user);
-  const result = await provisionOrder(order.id);
+  const result = await provisionOrder(order.id, options);
   if (!result.provisioned) {
     console.error(`[finalizeOrder] Provisioning failed for order ${orderId}: ${result.reason}`, result.errors);
   }
@@ -115,7 +115,7 @@ const finalizeOrder = async (orderId) => {
 // Create a new order
 router.post('/create', authenticate, async (req, res, next) => {
   try {
-    const { productId, paymentMethod, couponCode } = req.body;
+    const { productId, paymentMethod, couponCode, options } = req.body;
 
     if (!productId) {
       throw new ApiError(400, 'Product ID is required', 'MISSING_PRODUCT_ID');
@@ -198,7 +198,7 @@ router.post('/create', authenticate, async (req, res, next) => {
     if (isImmediate) {
       let provisionResult = { provisioned: false, reason: 'not_run' };
       try {
-        provisionResult = await finalizeOrder(order.id);
+        provisionResult = await finalizeOrder(order.id, options || {});
       } catch (err) {
         console.error(`[order.create] finalizeOrder failed: ${err.message}`);
         provisionResult = { provisioned: false, reason: err.message, errors: [err.message] };

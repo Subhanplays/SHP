@@ -77,7 +77,7 @@ const RELATIONS = {
 // Columns per table (used for insert/update whitelisting and DDL)
 const TABLE_COLUMNS = {
   user: ['id', 'username', 'email', 'password', 'avatar', 'discordId', 'role', 'coins', 'referrerId', 'referralCode', 'lastDailyReward', 'lastLoginReward', 'createdAt', 'updatedAt'],
-  product: ['id', 'name', 'description', 'category', 'price', 'coinPrice', 'billingCycle', 'ram', 'cpu', 'disk', 'databases', 'backups', 'node', 'egg', 'allocation', 'enabled', 'createdAt', 'updatedAt'],
+  product: ['id', 'name', 'description', 'category', 'price', 'coinPrice', 'billingCycle', 'ram', 'cpu', 'disk', 'databases', 'backups', 'node', 'egg', 'allocation', 'eggConfig', 'enabled', 'createdAt', 'updatedAt'],
   order: ['id', 'userId', 'totalAmount', 'coinAmount', 'status', 'paymentMethod', 'paymentId', 'couponCode', 'createdAt', 'updatedAt'],
   orderItem: ['id', 'orderId', 'productId', 'quantity', 'price', 'coinPrice'],
   server: ['id', 'userId', 'orderId', 'pteroId', 'pteroPanelId', 'name', 'status', 'ram', 'cpu', 'disk', 'databases', 'backups', 'egg', 'node', 'expiresAt', 'suspendedAt', 'deletedAt', 'lastBackupAt', 'createdAt', 'updatedAt'],
@@ -126,6 +126,7 @@ const JSON_COLUMNS = {
   settings: ['value'],
   log: ['details'],
   coupon: ['applicableProducts'],
+  product: ['eggConfig'],
 };
 
 // Numeric column -> SQL type

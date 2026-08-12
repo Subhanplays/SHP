@@ -31,6 +31,7 @@ const EMPTY = {
   node: 0,
   egg: null,
   allocation: 0,
+  eggConfig: [],
   enabled: true,
 };
 
@@ -84,6 +85,20 @@ const ProductForm = () => {
     } finally {
       setSaving(false);
     }
+  };
+
+  const handleConfig = (idx, field, value) => {
+    const next = (form.eggConfig || []).map((c) => ({ ...c }));
+    next[idx][field] = value;
+    setForm({ ...form, eggConfig: next });
+  };
+
+  const addConfig = () => {
+    setForm({ ...form, eggConfig: [...(form.eggConfig || []), { env: '', label: '', options: [], password: false, placeholder: '' }] });
+  };
+
+  const removeConfig = (idx) => {
+    setForm({ ...form, eggConfig: (form.eggConfig || []).filter((_, i) => i !== idx) });
   };
 
   if (loading) {
@@ -185,6 +200,22 @@ const ProductForm = () => {
             )}
             <span style={{ display: 'block', marginTop: '0.35rem' }}>Leave Allocation empty to auto-pick any free port on purchase.</span>
           </div>
+
+          <h3 style={{ margin: '2rem 0 1rem', fontSize: '1.05rem', fontWeight: 700 }}>
+            Software / Version Options <span style={{ fontWeight: 400, fontSize: '0.8rem', color: 'var(--text-muted)' }}>(shown at purchase)</span>
+          </h3>
+          <p style={{ margin: '0 0 1rem', fontSize: '0.82rem', color: 'var(--text-secondary)' }}>
+            Define the drop-downs buyers see before ordering (e.g. Software: Paper/Bungee/Waterfall, then Version: 1.21.1). Leave empty to auto-read from the Pterodactyl egg variables.
+          </p>
+          {(form.eggConfig || []).map((cfg, idx) => (
+            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.6rem', marginBottom: '0.6rem', alignItems: 'center' }}>
+              <input className="form-control" placeholder="Env var (e.g. VERSION)" value={cfg.env} onChange={(e) => handleConfig(idx, 'env', e.target.value)} />
+              <input className="form-control" placeholder="Label (e.g. Software / Version)" value={cfg.label} onChange={(e) => handleConfig(idx, 'label', e.target.value)} />
+              <button type="button" className="btn-outline" onClick={() => removeConfig(idx)} style={{ color: '#ef4444', padding: '0.5rem 0.7rem' }}>✕</button>
+              <input className="form-control" placeholder="Options, comma-separated (e.g. Paper,Bungee,Waterfall)" value={(cfg.options || []).join(',')} onChange={(e) => handleConfig(idx, 'options', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} style={{ gridColumn: '1 / 3' }} />
+            </div>
+          ))}
+          <button type="button" className="btn-outline" onClick={addConfig} style={{ marginTop: '0.25rem' }}>+ Add option field</button>
 
           <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
             <input type="checkbox" name="enabled" checked={form.enabled} onChange={handleChange} style={{ accentColor: 'var(--primary-color)', width: 18, height: 18 }} />

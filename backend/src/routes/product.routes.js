@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { authenticate, optionalAuth } from '../middleware/auth.middleware.js';
 import { db } from '../config/database.js';
+import { pterodactylService } from '../services/pterodactyl.js';
 import { ApiError } from '../middleware/error.middleware.js';
 
 const router = Router();
@@ -88,6 +89,52 @@ router.get('/categories/list', async (req, res, next) => {
       success: true,
       data: categories,
     });
+  } catch (error) {
+    next(error);
+  }
+});
+
+// Get the configurable options (software/version etc.) for a product.
+// Sources options from the product's eggConfig (admin-defined) or reads them
+// live from the Pterodactyl egg variable options.
+router.get('/:id/config', async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const product = await db.product.findUnique({ where: { id } });
+    if (!product) throw new ApiError(404, 'Product not found', 'PRODUCT_NOT_FOUND');
+
+    const eggId = product.egg;
+    const panel = await db.pterodactylPanel.findFirst({ where: { enabled: true } });
+    let liveConfig = null;
+    if (panel && eggId) {
+      try {
+        liveConfig = await pterodactylService.getEggConfig(panel.url, panel.appApiKey, eggId);
+      } catch {
+        liveConfig = null;
+      }
+    }
+
+    // Admin-defined config takes priority and can label/lock options.
+    // Shape: [{ env, label, options: [], multiple? }]
+    const adminConfig = Array.isArray(product.eggConfig) ? product.eggConfig : [];
+
+    const data = adminConfig.length
+      ? adminConfig.map((c) => ({
+          env: c.env,
+          label: c.label || c.env,
+          options: c.options || [],
+          password: !!c.password,
+          placeholder: c.placeholder || '',
+        }))
+      : (liveConfig?.variables || []).map((v) => ({
+          env: v.env,
+          label: v.name || v.env,
+          options: v.options || [],
+          defaultValue: v.defaultValue,
+          required: v.required,
+        }));
+
+    res.json({ success: true, data: { nestId: liveConfig?.nestId, eggId: liveConfig?.eggId, fields: data } });
   } catch (error) {
     next(error);
   }

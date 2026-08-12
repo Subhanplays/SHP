@@ -464,6 +464,62 @@ class PterodactylService {
     return response.data;
   }
 
+  // Get a single egg by id across all nests (with variables), or null.
+  // Returns { nestId, variables: [...] } where each variable has
+  // { env, name, description, default_value, rules, options }.
+  async getEggConfig(panelUrl, apiKey, eggId) {
+    const url = this.normalizeUrl(panelUrl);
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      Accept: 'Application/vnd.pterodactyl.v1+json',
+    };
+
+    const nestsRes = await axios.get(`${url}/api/application/nests`, { params: { per_page: 100 }, headers });
+    const nests = nestsRes.data?.data || [];
+
+    for (const nest of nests) {
+      const nestId = nest?.id ?? nest?.attributes?.id;
+      if (!nestId) continue;
+      let eggs;
+      try {
+        const res = await axios.get(`${url}/api/application/nests/${nestId}/eggs`, {
+          params: { include: 'variables', per_page: 100 },
+          headers,
+        });
+        eggs = res.data?.data || [];
+      } catch {
+        continue;
+      }
+      const egg = eggs.find((e) => String(e?.id ?? e?.attributes?.id) === String(eggId));
+      if (!egg) continue;
+      const attr = egg.attributes || egg;
+      const vars = (attr.relationships?.variables?.data || []).map((v) => {
+        const a = v.attributes || v;
+        let options = a.options;
+        if (typeof options === 'string') {
+          try {
+            options = JSON.parse(options);
+          } catch {
+            options = options.split(',').map((s) => s.trim());
+          }
+        }
+        if (!Array.isArray(options)) options = null;
+        return {
+          env: a.env_variable,
+          name: a.name,
+          description: a.description,
+          defaultValue: a.default_value,
+          required: String(a.rules || '').includes('required'),
+          options,
+          rules: a.rules,
+        };
+      });
+      return { nestId, eggId: String(attr.id ?? eggId), eggName: attr.name, variables: vars };
+    }
+    return null;
+  }
+
   // Return a list of every free allocation across all nodes.
   // Each entry: { allocationId, nodeId, ip, port }
   async getFreeAllocations(panelUrl, apiKey) {
