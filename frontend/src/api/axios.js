@@ -110,6 +110,8 @@ export const serverAPI = {
   getConsole: (id) => api.get(`/pterodactyl/servers/${id}/console`),
   getResources: (id) => api.get(`/pterodactyl/servers/${id}/resources`),
   getPteroInfo: (id) => api.get(`/pterodactyl/servers/${id}/info`),
+  getFreePorts: (id) => api.post(`/servers/${id}/change-port`),
+  changePort: (id, allocationId) => api.post(`/servers/${id}/change-port`, { allocationId }),
 };
 
 export const coinAPI = {
@@ -173,6 +175,7 @@ export const adminAPI = {
   addPterodactylPanel: (data) => api.post('/admin/pterodactyl', data),
   updatePterodactylPanel: (id, data) => api.put(`/admin/pterodactyl/${id}`, data),
   testPterodactyl: (data) => api.post('/admin/pterodactyl/test', data),
+  getFreeAllocations: () => api.get('/admin/pterodactyl/allocations'),
   deletePterodactylPanel: (id) => api.delete(`/admin/pterodactyl/${id}`),
   getCoinTransactions: (params) => api.get('/admin/coins/transactions', { params }),
   getLogs: (params) => api.get('/admin/logs', { params }),

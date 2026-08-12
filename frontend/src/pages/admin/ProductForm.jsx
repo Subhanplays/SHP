@@ -41,6 +41,13 @@ const ProductForm = () => {
   const [form, setForm] = useState(EMPTY);
   const [loading, setLoading] = useState(isEdit);
   const [saving, setSaving] = useState(false);
+  const [freeInfo, setFreeInfo] = useState([]);
+
+  useEffect(() => {
+    adminAPI.getFreeAllocations()
+      .then((res) => setFreeInfo(res.data.data || []))
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (isEdit) {
@@ -162,6 +169,21 @@ const ProductForm = () => {
               <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Egg ID</label>
               <input name="egg" value={form.egg ?? ''} onChange={handleChange} className="form-control" placeholder="Pterodactyl egg id" />
             </div>
+          </div>
+
+          <div style={{ marginTop: '1rem', padding: '0.9rem 1rem', borderRadius: 'var(--radius-sm)', background: 'rgba(99,102,241,0.08)', border: '1px solid var(--glass-border)', fontSize: '0.85rem', color: 'var(--text-secondary)' }}>
+            <strong style={{ display: 'block', marginBottom: '0.35rem', color: 'var(--text-primary)' }}>Available ports</strong>
+            {freeInfo.length === 0 ? (
+              <span>No enabled panels with read access, or no free ports found.</span>
+            ) : (
+              freeInfo.map((p) => (
+                <div key={p.panelId} style={{ display: 'flex', justifyContent: 'space-between', padding: '0.15rem 0' }}>
+                  <span>{p.panelName}</span>
+                  <span style={{ fontWeight: 600 }}>{p.count} free</span>
+                </div>
+              ))
+            )}
+            <span style={{ display: 'block', marginTop: '0.35rem' }}>Leave Allocation empty to auto-pick any free port on purchase.</span>
           </div>
 
           <div style={{ marginTop: '1.5rem', display: 'flex', alignItems: 'center', gap: '0.75rem' }}>

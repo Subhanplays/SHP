@@ -86,14 +86,14 @@ export const provisionOrder = async (orderId) => {
     const pteroUserId = pteroUser?.id ?? pteroUser?.attributes?.id ?? pteroUser?.attributes?.attributes?.id;
     if (!pteroUserId) throw new Error(errors.join(' | ') || 'Could not resolve Pterodactyl user');
 
-    // 2. Resolve the egg, nest and a usable allocation so Pterodactyl accepts the server request
+    // 3. Resolve the egg, nest and a usable allocation so Pterodactyl accepts the server request
     let dockerImage = 'ghcr.io/pterodactyl/yolks:java_17';
     let startup = 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}';
     let environment = { SERVER_JARFILE: 'server.jar', SERVER_MEMORY: product.ram || 2048 };
     let eggId = product.egg || panel.eggId || null;
     let nestId = null;
-    let nodeId = panel.nodeId || product.node || null;
     let allocationId = product.allocation || null;
+    let nodeId = panel.nodeId || product.node || null;
 
     if (eggId) {
       try {
@@ -120,44 +120,23 @@ export const provisionOrder = async (orderId) => {
       }
     }
 
-    if (!allocationId && nodeId) {
-      try {
-        const allocations = await pterodactylService.getAllocations(panelUrl, panel.appApiKey, nodeId);
-        const firstFree = allocations?.data?.find((a) => {
-          const attr = a.attributes || a;
-          return !attr.assigned && !attr.assigned_to;
-        });
-        allocationId = firstFree?.id ?? firstFree?.attributes?.id ?? firstFree?.attributes?.attributes?.id;
-      } catch (e) {
-        errors.push(`getAllocations: ${e.message}`);
-      }
-    }
-
-    // If we still have no allocation, auto-detect a node that has a free one
+    // Resolve a free allocation. If none configured on the product, auto-pick
+    // any free allocation from the panel and pin the node to that allocation's
+    // node so Pterodactyl never rejects allocation.default.
     if (!allocationId) {
       try {
-        const nodes = await pterodactylService.getNodes(panelUrl, panel.appApiKey);
-        for (const n of nodes?.data || []) {
-          const nId = n.id ?? n.attributes?.id;
-          if (!nId) continue;
-          const allocations = await pterodactylService.getAllocations(panelUrl, panel.appApiKey, nId);
-          const firstFree = allocations?.data?.find((a) => {
-            const attr = a.attributes || a;
-            return !attr.assigned && !attr.assigned_to;
-          });
-          if (firstFree) {
-            allocationId = firstFree?.id ?? firstFree?.attributes?.id ?? firstFree?.attributes?.attributes?.id;
-            nodeId = nId;
-            break;
-          }
+        const free = await pterodactylService.getFreeAllocations(panelUrl, panel.appApiKey);
+        if (free.length > 0) {
+          allocationId = free[0].allocationId;
+          nodeId = free[0].nodeId;
         }
       } catch (e) {
-        errors.push(`autoAllocation: ${e.message}`);
+        errors.push(`getFreeAllocations: ${e.message}`);
       }
     }
 
     if (!nestId) throw new Error('Missing Pterodactyl nest id for this product/panel - set a valid Egg ID on the panel (Admin → Pterodactyl) or on the product');
-    if (!allocationId) throw new Error('No free allocation found on any Pterodactyl node - add an allocation to the node in Pterodactyl, or set an Allocation ID on the product');
+    if (!allocationId) throw new Error('No free allocation found on any Pterodactyl node - add an allocation to the node in Pterodactyl');
 
     // 3. Create the server
     const created = await pterodactylService.createServer(panelUrl, panel.appApiKey, {

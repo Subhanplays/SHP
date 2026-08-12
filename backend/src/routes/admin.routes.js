@@ -781,6 +781,31 @@ router.post('/pterodactyl/test', async (req, res, next) => {
   }
 });
 
+// List free allocations across all panels (for the product form / port picker)
+router.get('/pterodactyl/allocations', async (req, res, next) => {
+  try {
+    const panels = await db.pterodactylPanel.findMany({ where: { enabled: true } });
+    const result = [];
+    for (const panel of panels) {
+      try {
+        const free = await pterodactylService.getFreeAllocations(panel.url, panel.appApiKey);
+        result.push({
+          panelId: panel.id,
+          panelName: panel.name,
+          panelUrl: panel.url,
+          count: free.length,
+          allocations: free,
+        });
+      } catch (e) {
+        result.push({ panelId: panel.id, panelName: panel.name, count: 0, allocations: [], error: e.message });
+      }
+    }
+    res.json({ success: true, data: result });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Update Pterodactyl panel
 router.put('/pterodactyl/:id', async (req, res, next) => {
   try {

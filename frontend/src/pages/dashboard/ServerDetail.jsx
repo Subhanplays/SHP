@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaServer, FaPlay, FaStop, FaRedo, FaTerminal, FaChartLine, FaCoins, FaArrowLeft, FaExternalLinkAlt } from 'react-icons/fa';
+import { FaServer, FaPlay, FaStop, FaRedo, FaTerminal, FaChartLine, FaCoins, FaArrowLeft, FaExternalLinkAlt, FaNetworkWired } from 'react-icons/fa';
 import { userAPI, serverAPI } from '../../api/axios';
 import useAuthStore from '../../store/authStore';
 import Badge from '../../components/Badge';
@@ -19,6 +19,10 @@ const ServerDetail = () => {
   const [actionLoading, setActionLoading] = useState(false);
   const [renewModal, setRenewModal] = useState(false);
   const [renewing, setRenewing] = useState(false);
+  const [portModal, setPortModal] = useState(false);
+  const [freePorts, setFreePorts] = useState([]);
+  const [portLoading, setPortLoading] = useState(true);
+  const [changingPort, setChangingPort] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -65,6 +69,33 @@ const ServerDetail = () => {
       toast.error(error.response?.data?.error?.message || error.response?.data?.message || 'Renewal failed');
     } finally {
       setRenewing(false);
+    }
+  };
+
+  const openPortModal = async () => {
+    setPortModal(true);
+    setPortLoading(true);
+    try {
+      const res = await serverAPI.getFreePorts(id);
+      setFreePorts(res.data.data || []);
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || 'Could not load available ports');
+      setFreePorts([]);
+    } finally {
+      setPortLoading(false);
+    }
+  };
+
+  const handleChangePort = async (allocationId) => {
+    setChangingPort(true);
+    try {
+      const res = await serverAPI.changePort(id, allocationId);
+      toast.success(res.data.message || 'Port changed successfully');
+      setPortModal(false);
+    } catch (error) {
+      toast.error(error.response?.data?.error?.message || error.response?.data?.message || 'Could not change port');
+    } finally {
+      setChangingPort(false);
     }
   };
 
@@ -121,7 +152,10 @@ const ServerDetail = () => {
         <button className="btn-outline" onClick={() => doAction('restart')} disabled={actionLoading} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
           <FaRedo style={{ color: '#f59e0b' }} /> Restart
         </button>
-        <button className="btn-primary" onClick={() => setRenewModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+        <button className="btn-outline" onClick={openPortModal} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem', marginLeft: 'auto' }}>
+          <FaNetworkWired /> Change Port
+        </button>
+        <button className="btn-primary" onClick={() => setRenewModal(true)} style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
           <FaCoins /> Renew
         </button>
       </div>
@@ -233,6 +267,40 @@ const ServerDetail = () => {
         onConfirm={handleRenew}
         onCancel={() => setRenewModal(false)}
       />
+
+      {portModal && (
+        <div style={{ position: 'fixed', inset: 0, background: 'rgba(0,0,0,0.6)', zIndex: 1000, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1rem' }} onClick={() => !changingPort && setPortModal(false)}>
+          <div className="glass-card" style={{ width: '100%', maxWidth: 460 }} onClick={(e) => e.stopPropagation()}>
+            <h3 style={{ margin: '0 0 0.25rem', fontSize: '1.05rem', fontWeight: 700 }}>Change Port</h3>
+            <p style={{ margin: '0 0 1rem', color: 'var(--text-secondary)', fontSize: '0.85rem' }}>
+              Choose a free port. Your current port will be released and becomes free for others.
+            </p>
+            {portLoading ? (
+              <div style={{ display: 'flex', justifyContent: 'center', padding: '2rem' }}><div className="spinner" /></div>
+            ) : freePorts.length === 0 ? (
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem' }}>No free ports are currently available on this panel.</p>
+            ) : (
+              <div style={{ display: 'grid', gap: '0.5rem', maxHeight: 320, overflowY: 'auto' }}>
+                {freePorts.map((p) => (
+                  <button
+                    key={p.allocationId}
+                    className="btn-outline"
+                    disabled={changingPort}
+                    onClick={() => handleChangePort(p.allocationId)}
+                    style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', width: '100%', textAlign: 'left' }}
+                  >
+                    <span>{p.ip}:{p.port}</span>
+                    <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>node {p.nodeId}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+            <div style={{ display: 'flex', justifyContent: 'flex-end', marginTop: '1.25rem' }}>
+              <button className="btn-outline" onClick={() => setPortModal(false)} disabled={changingPort}>Close</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

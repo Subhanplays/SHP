@@ -236,6 +236,62 @@ router.post('/:id/restart', authenticate, async (req, res, next) => {
   }
 });
 
+// Change a server's primary port to another free allocation
+router.post('/:id/change-port', authenticate, async (req, res, next) => {
+  try {
+    const { id } = req.params;
+    const { allocationId } = req.body;
+
+    const server = await db.server.findFirst({
+      where: { id, userId: req.userId, deletedAt: null },
+    });
+    if (!server) throw new ApiError(404, 'Server not found', 'SERVER_NOT_FOUND');
+    if (!server.pteroId || !server.pteroPanelId) throw new ApiError(400, 'Server not connected to Pterodactyl', 'PTERO_NOT_CONFIGURED');
+
+    const panel = await db.pterodactylPanel.findUnique({ where: { id: server.pteroPanelId } });
+    if (!panel) throw new ApiError(404, 'Pterodactyl panel not found', 'PANEL_NOT_FOUND');
+
+    if (!allocationId) {
+      const free = await pterodactylService.getFreeAllocations(panel.url, panel.appApiKey);
+      if (!free.length) throw new ApiError(400, 'No free ports available on this panel', 'NO_FREE_PORTS');
+      res.json({
+        success: true,
+        data: free,
+        message: `${free.length} free port(s) available. Send again with an allocationId to pick one.`,
+      });
+      return;
+    }
+
+    // Verify the target allocation is actually free before assigning it
+    const freeList = await pterodactylService.getFreeAllocations(panel.url, panel.appApiKey);
+    const target = freeList.find((a) => String(a.allocationId) === String(allocationId));
+    if (!target) throw new ApiError(400, 'That port is not free or doesn\'t exist', 'PORT_NOT_FREE');
+
+    // Get current primary allocation so we keep it as additional (frees the old one is wrong—
+    // instead we reassign only if it's the default). Get server's current allocations.
+    const current = await pterodactylService.getServerAllocations(panel.url, panel.appApiKey, server.pteroId);
+    const currentDefault = current?.attributes?.default;
+    const currentAdds = current?.attributes?.additional?.map((a) => a.id) || [];
+
+    // We want to release the old default port so it becomes free again. The new
+    // default is set via `default`; `additional` keeps the remaining allocations
+    // (excluding both the old default and the new one).
+    const keep = currentAdds.filter((cid) => String(cid) !== String(currentDefault) && String(cid) !== String(allocationId));
+
+    await pterodactylService.setPrimaryAllocation(
+      panel.url,
+      panel.appApiKey,
+      server.pteroId,
+      Number(allocationId),
+      keep
+    );
+
+    res.json({ success: true, message: `Port changed to ${target.ip}:${target.port}` });
+  } catch (error) {
+    next(error);
+  }
+});
+
 // Renew server
 router.post('/:id/renew', authenticate, async (req, res, next) => {
   try {

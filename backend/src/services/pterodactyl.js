@@ -427,6 +427,85 @@ class PterodactylService {
       throw new Error(`Failed to get allocations: ${error.message}`);
     }
   }
+
+  // Change a server's primary allocation (port). The new allocation must be
+  // free. Pterodactyl sets `default` as the new primary and keeps `additional`.
+  async setPrimaryAllocation(panelUrl, apiKey, serverId, newAllocationId, additional) {
+    const url = this.normalizeUrl(panelUrl);
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      Accept: 'Application/vnd.pterodactyl.v1+json',
+    };
+    const response = await axios.patch(
+      `${url}/api/application/servers/${serverId}/allocation`,
+      {
+        default: Number(newAllocationId),
+        additional: (additional || []).map((a) => Number(a)),
+      },
+      { headers }
+    );
+    return response.data;
+  }
+
+  // Get the allocations currently assigned to a server
+  async getServerAllocations(panelUrl, apiKey, serverId) {
+    const url = this.normalizeUrl(panelUrl);
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      Accept: 'Application/vnd.pterodactyl.v1+json',
+    };
+    const response = await axios.get(`${url}/api/application/servers/${serverId}/allocations`, { headers });
+    return response.data;
+  }
+
+  // Return a list of every free allocation across all nodes.
+  // Each entry: { allocationId, nodeId, ip, port }
+  async getFreeAllocations(panelUrl, apiKey) {
+    const url = this.normalizeUrl(panelUrl);
+    const headers = {
+      Authorization: `Bearer ${apiKey}`,
+      'Content-Type': 'application/json',
+      Accept: 'Application/vnd.pterodactyl.v1+json',
+    };
+
+    const nodesRes = await axios.get(`${url}/api/application/nodes`, {
+      params: { per_page: 100 },
+      headers,
+    });
+    const nodes = nodesRes.data?.data || [];
+
+    const free = [];
+    for (const node of nodes) {
+      const nodeId = node?.id ?? node?.attributes?.id;
+      if (!nodeId) continue;
+      let allocs;
+      try {
+        const res = await axios.get(`${url}/api/application/nodes/${nodeId}/allocations`, {
+          params: { per_page: 500 },
+          headers,
+        });
+        allocs = res.data?.data || [];
+      } catch {
+        continue;
+      }
+      for (const a of allocs) {
+        const attr = a?.attributes || a;
+        if (attr.assigned || attr.assigned_to) continue;
+        free.push({
+          allocationId: attr.id,
+          nodeId,
+          node: node.attributes?.name ?? node.name ?? String(nodeId),
+          ip: attr.ip,
+          port: attr.port,
+          alias: attr.alias,
+          label: `${attr.ip}:${attr.port} (node ${nodeId})`,
+        });
+      }
+    }
+    return free;
+  }
 }
 
 export const pterodactylService = new PterodactylService();
