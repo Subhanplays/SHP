@@ -115,7 +115,7 @@ router.get('/:id/config', async (req, res, next) => {
     }
 
     // Admin-defined config takes priority and can label/lock options.
-    // Shape: [{ env, label, options: [], multiple? }]
+    // Shape: [{ env, label, options: [], multiple?, buildEnv?, buildMap? }]
     const adminConfig = Array.isArray(product.eggConfig) ? product.eggConfig : [];
 
     const data = adminConfig.length
@@ -125,6 +125,8 @@ router.get('/:id/config', async (req, res, next) => {
           options: c.options || [],
           password: !!c.password,
           placeholder: c.placeholder || '',
+          buildEnv: c.buildEnv || null,
+          buildMap: c.buildMap || null,
         }))
       : (liveConfig?.variables || []).map((v) => ({
           env: v.env,

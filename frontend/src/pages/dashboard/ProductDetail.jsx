@@ -246,7 +246,15 @@ const ProductDetail = () => {
                         <select
                           className="form-control"
                           value={choices[field.env] || ''}
-                          onChange={(e) => setChoices({ ...choices, [field.env]: e.target.value })}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            const next = { ...choices, [field.env]: val };
+                            // If this field maps versions to build numbers, fill it in
+                            if (field.buildEnv && field.buildMap && val) {
+                              next[field.buildEnv] = field.buildMap[val] ?? next[field.buildEnv] ?? '';
+                            }
+                            setChoices(next);
+                          }}
                         >
                           <option value="">Select...</option>
                           {field.options.map((o) => (

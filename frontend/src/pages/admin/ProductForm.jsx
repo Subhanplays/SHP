@@ -89,9 +89,26 @@ const ProductForm = () => {
 
   const handleConfig = (idx, field, value) => {
     const next = (form.eggConfig || []).map((c) => ({ ...c }));
-    next[idx][field] = value;
+    if (field === 'buildMap') {
+      // Parse "1.21.1 -> 133" lines into an object
+      const map = {};
+      String(value).split(/\r?\n/).forEach((line) => {
+        const m = line.match(/^\s*(.+?)\s*(?:->|=>|:)\s*(\d+)\s*$/);
+        if (m) map[m[1].trim()] = m[2].trim();
+      });
+      next[idx].buildMap = map;
+    } else if (field === 'options') {
+      next[idx].options = value.split(',').map((s) => s.trim()).filter(Boolean);
+    } else {
+      next[idx][field] = value;
+    }
     setForm({ ...form, eggConfig: next });
   };
+
+  const configMapText = (cfg) =>
+    Object.entries(cfg.buildMap || {})
+      .map(([v, b]) => `${v} -> ${b}`)
+      .join('\n');
 
   const addConfig = () => {
     setForm({ ...form, eggConfig: [...(form.eggConfig || []), { env: '', label: '', options: [], password: false, placeholder: '' }] });
@@ -208,11 +225,24 @@ const ProductForm = () => {
             Define the drop-downs buyers see before ordering (e.g. Software: Paper/Bungee/Waterfall, then Version: 1.21.1). Leave empty to auto-read from the Pterodactyl egg variables.
           </p>
           {(form.eggConfig || []).map((cfg, idx) => (
-            <div key={idx} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.6rem', marginBottom: '0.6rem', alignItems: 'center' }}>
-              <input className="form-control" placeholder="Env var (e.g. VERSION)" value={cfg.env} onChange={(e) => handleConfig(idx, 'env', e.target.value)} />
-              <input className="form-control" placeholder="Label (e.g. Software / Version)" value={cfg.label} onChange={(e) => handleConfig(idx, 'label', e.target.value)} />
-              <button type="button" className="btn-outline" onClick={() => removeConfig(idx)} style={{ color: '#ef4444', padding: '0.5rem 0.7rem' }}>✕</button>
-              <input className="form-control" placeholder="Options, comma-separated (e.g. Paper,Bungee,Waterfall)" value={(cfg.options || []).join(',')} onChange={(e) => handleConfig(idx, 'options', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))} style={{ gridColumn: '1 / 3' }} />
+            <div key={idx} style={{ padding: '1rem', borderRadius: 'var(--radius-sm)', background: 'var(--glass-bg)', border: '1px solid var(--glass-border)', marginBottom: '0.75rem' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '0.6rem', alignItems: 'center' }}>
+                <input className="form-control" placeholder="Env var (e.g. VERSION)" value={cfg.env} onChange={(e) => handleConfig(idx, 'env', e.target.value)} />
+                <input className="form-control" placeholder="Label (e.g. Software / Version)" value={cfg.label} onChange={(e) => handleConfig(idx, 'label', e.target.value)} />
+                <button type="button" className="btn-outline" onClick={() => removeConfig(idx)} style={{ color: '#ef4444', padding: '0.5rem 0.7rem' }}>✕</button>
+                <input className="form-control" placeholder="Options, comma-separated (e.g. Paper,Bungee,Waterfall)" value={(cfg.options || []).join(',')} onChange={(e) => handleConfig(idx, 'options', e.target.value)} style={{ gridColumn: '1 / 3' }} />
+                <input className="form-control" placeholder="Build env var (e.g. BUILD_NUMBER)" value={cfg.buildEnv || ''} onChange={(e) => handleConfig(idx, 'buildEnv', e.target.value)} />
+              </div>
+              <label style={{ display: 'block', margin: '0.75rem 0 0.35rem', fontSize: '0.8rem', fontWeight: 600, color: 'var(--text-secondary)' }}>
+                Version → Build number map (only for Version field)
+              </label>
+              <textarea
+                className="form-control"
+                rows={4}
+                placeholder={'1.21.1 -> 133\n1.20.6 -> 151'}
+                value={configMapText(cfg)}
+                onChange={(e) => handleConfig(idx, 'buildMap', e.target.value)}
+              />
             </div>
           ))}
           <button type="button" className="btn-outline" onClick={addConfig} style={{ marginTop: '0.25rem' }}>+ Add option field</button>
