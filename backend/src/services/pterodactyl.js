@@ -336,25 +336,61 @@ class PterodactylService {
     }
   }
 
-  // Get all eggs
+  // Get all eggs (across all nests). Pterodactyl has no global /eggs route,
+  // so we page through nests and collect their eggs.
   async getEggs(panelUrl, apiKey, nodeId = null) {
     const url = this.normalizeUrl(panelUrl);
     try {
-      const eggUrl = nodeId
-        ? `${url}/api/application/nodes/${nodeId}/eggs`
-        : `${url}/api/application/eggs`;
-      
-      const response = await axios.get(eggUrl, {
-        params: { include: 'variables', per_page: 100 },
-        headers: {
-          Authorization: `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          Accept: 'Application/vnd.pterodactyl.v1+json',
-        },
+      const headers = {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+        Accept: 'Application/vnd.pterodactyl.v1+json',
+      };
+
+      if (nodeId) {
+        const res = await axios.get(`${url}/api/application/nodes/${nodeId}/eggs`, {
+          params: { include: 'variables', per_page: 100 },
+          headers,
+        });
+        return res.data;
+      }
+
+      // Fetch all nests first
+      const nestsRes = await axios.get(`${url}/api/application/nests`, {
+        params: { per_page: 100 },
+        headers,
       });
-      return response.data;
+      const nests = nestsRes.data?.data || [];
+
+      const eggs = [];
+      for (const nest of nests) {
+        const nestId = nest?.id ?? nest?.attributes?.id;
+        if (!nestId) continue;
+        try {
+          const eggsRes = await axios.get(`${url}/api/application/nests/${nestId}/eggs`, {
+            params: { include: 'variables', per_page: 100 },
+            headers,
+          });
+          const list = eggsRes.data?.data || [];
+          for (const egg of list) {
+            const attr = egg?.attributes || egg;
+            if (attr && !attr.relationships?.nest) {
+              attr.relationships = { nest: { attributes: { id: nestId } } };
+            }
+            eggs.push(egg);
+          }
+        } catch {
+          // skip nests we cannot read
+        }
+      }
+
+      return { object: 'list', data: eggs };
     } catch (error) {
-      throw new Error(`Failed to get eggs: ${error.message}`);
+      throw new Error(
+        error.response?.status === 404
+          ? `Failed to get eggs: the Pterodactyl API returned 404. Your App API key may not have permission to read nests/eggs (Admin → Application API → assign nests & eggs read), or the panel URL is wrong.`
+          : `Failed to get eggs: ${error.message}`
+      );
     }
   }
 
