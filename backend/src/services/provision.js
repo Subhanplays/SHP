@@ -123,7 +123,7 @@ export const provisionOrder = async (orderId, options = {}) => {
             if (a.default_value !== undefined && a.default_value !== null && a.default_value !== '') {
               environment[key] = a.default_value;
             } else if (a.rules && String(a.rules).includes('required')) {
-              const fb = { BUILD_NUMBER: 'latest', VERSION: 'latest', SERVER_JARFILE: 'server.jar' }[key] || '';
+              const fb = { BUILD_NUMBER: 'latest', MINECRAFT_VERSION: 'latest', VERSION: 'latest', SERVER_JARFILE: 'server.jar' }[key] || '';
               environment[key] = fb;
             }
           }
@@ -133,6 +133,14 @@ export const provisionOrder = async (orderId, options = {}) => {
       } catch (e) {
         errors.push(`getEgg: ${e.message}`);
       }
+    }
+
+    // Last-resort guarantee: if the egg lookup failed (e.g. API key lacks egg
+    // read), still provide the known required vars so Pterodactyl accepts it.
+    if (product.category === 'minecraft' || product.egg || panel.eggId) {
+      if (!environment.BUILD_NUMBER) environment.BUILD_NUMBER = 'latest';
+      if (!environment.MINECRAFT_VERSION) environment.MINECRAFT_VERSION = product.config?.minecraftVersion || 'latest';
+      if (!environment.SERVER_JARFILE) environment.SERVER_JARFILE = 'server.jar';
     }
 
     // Resolve a free allocation. If none configured on the product, auto-pick
