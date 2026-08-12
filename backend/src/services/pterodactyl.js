@@ -140,7 +140,11 @@ class PterodactylService {
       );
       return response.data?.attributes || response.data?.data?.attributes || response.data?.data || response.data;
     } catch (error) {
-      throw new Error(`Failed to create server: ${JSON.stringify(error.response?.data) || error.message}`);
+      throw new Error(
+        `Failed to create server (allocation.default=${serverData.allocationId}): ${
+          JSON.stringify(error.response?.data) || error.message
+        }`
+      );
     }
   }
 

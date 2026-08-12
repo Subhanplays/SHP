@@ -136,25 +136,65 @@ export const provisionOrder = async (orderId) => {
     }
 
     if (!nestId) throw new Error('Missing Pterodactyl nest id for this product/panel - set a valid Egg ID on the panel (Admin → Pterodactyl) or on the product');
-    if (!allocationId) throw new Error('No free allocation found on any Pterodactyl node - add an allocation to the node in Pterodactyl');
 
-    // 3. Create the server
-    const created = await pterodactylService.createServer(panelUrl, panel.appApiKey, {
-      name: toSafeName(`${user.username}-${product.name}`),
-      userId: pteroUserId,
-      nestId,
-      eggId,
-      dockerImage,
-      startup,
-      environment,
-      memory: product.ram || 2048,
-      cpu: product.cpu || 100,
-      disk: product.disk || 10240,
-      databases: product.databases || 0,
-      backups: product.backups || 0,
-      allocations: 1,
-      allocationId,
-    });
+    // Build a candidate list of allocations to try, starting with the preferred
+    // one (from the product or first free) and falling back to other free ones.
+    const freeList = await pterodactylService
+      .getFreeAllocations(panelUrl, panel.appApiKey)
+      .catch((e) => {
+        errors.push(`getFreeAllocations: ${e.message}`);
+        return [];
+      });
+
+    const preferred = allocationId ? freeList.find((a) => String(a.allocationId) === String(allocationId)) || { allocationId, nodeId } : null;
+    const candidates = [];
+    if (preferred && !freeList.some((a) => String(a.allocationId) === String(preferred.allocationId))) {
+      // preferred came from product config, keep it as a candidate even if the
+      // free list is empty (permission issue) so we don't silently fail
+      candidates.push(preferred);
+    }
+    for (const a of freeList) {
+      if (!candidates.some((c) => String(c.allocationId) === String(a.allocationId))) {
+        candidates.push(a);
+      }
+    }
+
+    let created = null;
+    let lastError = null;
+    for (const cand of candidates) {
+      try {
+        created = await pterodactylService.createServer(panelUrl, panel.appApiKey, {
+          name: toSafeName(`${user.username}-${product.name}`),
+          userId: pteroUserId,
+          nestId,
+          eggId,
+          dockerImage,
+          startup,
+          environment,
+          memory: product.ram || 2048,
+          cpu: product.cpu || 100,
+          disk: product.disk || 10240,
+          databases: product.databases || 0,
+          backups: product.backups || 0,
+          allocations: 1,
+          allocationId: cand.allocationId,
+        });
+        nodeId = cand.nodeId || nodeId;
+        break;
+      } catch (e) {
+        lastError = e;
+        errors.push(`createServer (allocation ${cand.allocationId}): ${e.message}`);
+      }
+    }
+
+    if (!created) {
+      throw new Error(
+        `Failed to create server on ${candidates.length} allocation(s): ${
+          candidates.map((c) => c.allocationId).join(', ') || 'none'
+        }. Last error: ${lastError?.message || 'unknown'}`
+      );
+    }
+
     const pteroServerId = created?.id ?? created?.attributes?.id ?? created?.attributes?.attributes?.id;
     if (!pteroServerId) throw new Error('Pterodactyl did not return a server id');
 
