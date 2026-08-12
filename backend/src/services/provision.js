@@ -86,16 +86,19 @@ export const provisionOrder = async (orderId) => {
     const pteroUserId = pteroUser?.id ?? pteroUser?.attributes?.id ?? pteroUser?.attributes?.attributes?.id;
     if (!pteroUserId) throw new Error(errors.join(' | ') || 'Could not resolve Pterodactyl user');
 
-    // 2. Resolve the egg and a usable allocation so Pterodactyl accepts the server request
+    // 2. Resolve the egg, nest and a usable allocation so Pterodactyl accepts the server request
     let dockerImage = 'ghcr.io/pterodactyl/yolks:java_17';
     let startup = 'java -Xms128M -Xmx{{SERVER_MEMORY}}M -jar {{SERVER_JARFILE}}';
     let environment = { SERVER_JARFILE: 'server.jar', SERVER_MEMORY: product.ram || 2048 };
-    let nestId = panel.nestId || product.nest || null;
+    let eggId = product.egg || panel.eggId || null;
+    let nestId = null;
+    let nodeId = panel.nodeId || product.node || null;
     let allocationId = product.allocation || null;
-    if (product.egg) {
+
+    if (eggId) {
       try {
-         const eggs = await pterodactylService.getEggs(panelUrl, panel.appApiKey);
-        const egg = eggs?.data?.find((e) => String(e.id) === String(product.egg) || String(e.attributes?.id) === String(product.egg));
+        const eggs = await pterodactylService.getEggs(panelUrl, panel.appApiKey);
+        const egg = eggs?.data?.find((e) => String(e.id) === String(eggId) || String(e.attributes?.id) === String(eggId));
         if (egg) {
           const attr = egg.attributes || egg;
           nestId = attr.nest || attr.nest_id || attr.relationships?.nest?.attributes?.id || nestId;
@@ -109,15 +112,17 @@ export const provisionOrder = async (orderId) => {
               environment[key] = a.default_value;
             }
           }
+        } else {
+          errors.push(`getEgg: egg ${eggId} not found - double-check the Egg ID on the panel/product`);
         }
       } catch (e) {
         errors.push(`getEgg: ${e.message}`);
       }
     }
 
-    if (!allocationId && panel.nodeId) {
+    if (!allocationId && nodeId) {
       try {
-        const allocations = await pterodactylService.getAllocations(panelUrl, panel.appApiKey, panel.nodeId);
+        const allocations = await pterodactylService.getAllocations(panelUrl, panel.appApiKey, nodeId);
         const firstFree = allocations?.data?.find((a) => {
           const attr = a.attributes || a;
           return !attr.assigned && !attr.assigned_to;
@@ -128,15 +133,38 @@ export const provisionOrder = async (orderId) => {
       }
     }
 
-    if (!nestId) throw new Error('Missing Pterodactyl nest id for this product/panel');
-    if (!allocationId) throw new Error('No free allocation found on the selected Pterodactyl node');
+    // If we still have no allocation, auto-detect a node that has a free one
+    if (!allocationId) {
+      try {
+        const nodes = await pterodactylService.getNodes(panelUrl, panel.appApiKey);
+        for (const n of nodes?.data || []) {
+          const nId = n.id ?? n.attributes?.id;
+          if (!nId) continue;
+          const allocations = await pterodactylService.getAllocations(panelUrl, panel.appApiKey, nId);
+          const firstFree = allocations?.data?.find((a) => {
+            const attr = a.attributes || a;
+            return !attr.assigned && !attr.assigned_to;
+          });
+          if (firstFree) {
+            allocationId = firstFree?.id ?? firstFree?.attributes?.id ?? firstFree?.attributes?.attributes?.id;
+            nodeId = nId;
+            break;
+          }
+        }
+      } catch (e) {
+        errors.push(`autoAllocation: ${e.message}`);
+      }
+    }
+
+    if (!nestId) throw new Error('Missing Pterodactyl nest id for this product/panel - set a valid Egg ID on the panel (Admin → Pterodactyl) or on the product');
+    if (!allocationId) throw new Error('No free allocation found on any Pterodactyl node - add an allocation to the node in Pterodactyl, or set an Allocation ID on the product');
 
     // 3. Create the server
     const created = await pterodactylService.createServer(panelUrl, panel.appApiKey, {
       name: toSafeName(`${user.username}-${product.name}`),
       userId: pteroUserId,
       nestId,
-      eggId: product.egg || panel.eggId,
+      eggId,
       dockerImage,
       startup,
       environment,

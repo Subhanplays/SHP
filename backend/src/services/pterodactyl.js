@@ -345,6 +345,7 @@ class PterodactylService {
         : `${url}/api/application/eggs`;
       
       const response = await axios.get(eggUrl, {
+        params: { include: 'variables', per_page: 100 },
         headers: {
           Authorization: `Bearer ${apiKey}`,
           'Content-Type': 'application/json',

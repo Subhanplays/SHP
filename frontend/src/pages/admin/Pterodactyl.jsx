@@ -9,7 +9,7 @@ import ConfirmModal from '../../components/ConfirmModal';
 import toast from 'react-hot-toast';
 import { formatDateTime } from '../../utils/format';
 
-const EMPTY_PANEL = { name: '', url: '', appApiKey: '', clientApiKey: '', nodeId: '', eggId: '', locationId: '' };
+const EMPTY_PANEL = { name: '', url: '', appApiKey: '', clientApiKey: '', nodeId: '', eggId: '', locationId: '', enabled: true };
 
 const Pterodactyl = () => {
   const [panels, setPanels] = useState([]);
@@ -72,6 +72,7 @@ const Pterodactyl = () => {
         nodeId: form.nodeId ? parseInt(form.nodeId) : undefined,
         eggId: form.eggId ? parseInt(form.eggId) : undefined,
         locationId: form.locationId ? parseInt(form.locationId) : undefined,
+        enabled: form.enabled === true || form.enabled === 'true',
       };
       if (editing) {
         await adminAPI.updatePterodactylPanel(editing.id, payload);
@@ -115,6 +116,7 @@ const Pterodactyl = () => {
       nodeId: panel.nodeId || '',
       eggId: panel.eggId || '',
       locationId: panel.locationId || '',
+      enabled: panel.enabled !== false,
     });
     setShowForm(true);
   };
@@ -166,6 +168,10 @@ const Pterodactyl = () => {
                 <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: 500 }}>Location ID</label>
                 <input name="locationId" value={form.locationId} onChange={handleChange} className="form-control" type="number" placeholder="1" />
               </div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '0.6rem', paddingTop: '1.5rem' }}>
+                <input type="checkbox" name="enabled" checked={form.enabled} onChange={handleChange} style={{ accentColor: 'var(--primary-color)', width: 18, height: 18 }} />
+                <label style={{ fontSize: '0.9rem', fontWeight: 500, margin: 0 }}>Enabled (creates servers on this panel)</label>
+              </div>
             </div>
             <div style={{ display: 'flex', gap: '0.75rem', marginTop: '1.5rem' }}>
               <motion.button type="submit" className="btn-primary" whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }} disabled={saving}>
@@ -210,7 +216,7 @@ const Pterodactyl = () => {
                 <Badge status={p.status}>{p.status || 'unknown'}</Badge>
               </div>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: '0.8rem', color: 'var(--text-secondary)', borderTop: '1px solid var(--glass-border)', paddingTop: '0.75rem' }}>
-                <span>{p._count?.servers || 0} servers · added {formatDateTime(p.createdAt)}</span>
+                <span>{p._count?.servers || 0} servers · added {formatDateTime(p.createdAt)} · <span style={{ color: p.enabled ? '#10b981' : '#ef4444', fontWeight: 600 }}>{p.enabled ? 'Enabled' : 'Disabled'}</span></span>
                 <div style={{ display: 'flex', gap: '0.4rem' }}>
                   <button className="btn-outline" onClick={() => startEdit(p)} style={{ padding: '0.4rem 0.8rem', fontSize: '0.8rem' }} title="Edit">
                     <FaEdit />

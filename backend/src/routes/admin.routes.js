@@ -708,7 +708,7 @@ router.get('/pterodactyl', async (req, res, next) => {
 // Add Pterodactyl panel
 router.post('/pterodactyl', async (req, res, next) => {
   try {
-    const { name, url, appApiKey, clientApiKey, nodeId, eggId, locationId } = req.body;
+    const { name, url, appApiKey, clientApiKey, nodeId, eggId, locationId, enabled } = req.body;
 
     // Test connection first
     const testUrl = pterodactylService.normalizeUrl(url);
@@ -727,6 +727,7 @@ router.post('/pterodactyl', async (req, res, next) => {
         nodeId,
         eggId,
         locationId,
+        enabled: enabled !== false,
         lastChecked: new Date(),
         status: 'online',
       },
